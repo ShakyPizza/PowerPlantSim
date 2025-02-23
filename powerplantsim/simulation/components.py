@@ -9,12 +9,13 @@ class SteamSeperator:
     def __init__(self):
         pass
     def compute_waste_water(SteamFromWellhead, waste_index, randomizer):
-        waste_water_flow  = SteamFromWellhead * waste_index * randomizer
-        return 0
+        return {
+        "waste_water_flow": SteamFromWellhead * waste_index * randomizer,
+        }
 
     def waste_water_energy(waste_water_flow, Wh_pressure, steam_seperator_temperature):
         waste_water_energy = waste_water_flow * steam_seperator_temperature                   #Finna function fyrir útreikning á varma í vatninu.
-        return 0
+        return 1
     
     def compute_steam_forward(SteamFromWellhead, waste_water_energy):
         steam_forward = SteamFromWellhead - waste_water_energy
@@ -22,7 +23,7 @@ class SteamSeperator:
     
     def process(self):
         # placeholder
-        return 0
+        return 0 
 
 class MoistureSeperator:
     def __init__(self):
@@ -65,5 +66,4 @@ class CoolingTower:
     def compute_water_cooling_capacity(self):
         # placeholder
         return 0
-            
             
