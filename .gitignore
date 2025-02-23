@@ -10,6 +10,11 @@
 *.userosscache
 *.sln.docstates
 
+#Python related stuff
+__pycache__
+.pytest_cache
+.vscode/
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
