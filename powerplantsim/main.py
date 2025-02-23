@@ -1,10 +1,10 @@
 # powerplantsim/main.py
 
-from .simulation.engine import run_simulation_step
+from .simulation.engine import step_simulation
 
 def main():
     print("Starting PowerPlantSim...")
-    run_simulation_step()
+    step_simulation()
     print("Done.")
 
 if __name__ == "__main__":
