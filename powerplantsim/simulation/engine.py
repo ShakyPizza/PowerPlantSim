@@ -49,7 +49,7 @@ class SimulationEngine:
             steam_flow=self.state["steam_flow"],
             outlet_pressure=self.state["condenser_pressure"]
         )
-        self.state["turbine_out_power"] = turbine_result["power"]
+        self.state["turbine_out_power"] = turbine_result["mechanical_power"]
         # ... store additional turbine outputs in self.state (mass flow out, etc.)
 
         # 3) Update the condenser
