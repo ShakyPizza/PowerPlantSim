@@ -23,7 +23,7 @@ class SimulationEngine:
             "separator_pressure": None,
             "steam_flow": None,
             "waste_water_flow": None,
-            "turbine_out_power": 0.0,
+            "turbine_power": 0.0,
             "condenser_pressure": 0.06,   # barA
             "condenser_temp": 35,      # °C
         }
@@ -31,7 +31,6 @@ class SimulationEngine:
     def step_simulation(self, dt=1.0):
         """
         Advances the simulation by one time-step 'dt'.
-        dt could be 1 second, for example.
         """
 
         # 1) Update the separator with the wellhead values
