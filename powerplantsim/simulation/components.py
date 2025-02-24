@@ -1,3 +1,4 @@
+from iapws import IAPWS97
 class Wellhead:
     def __init__(self):
         pass
@@ -38,18 +39,7 @@ class ReliefValve:
     def __init__(self):
         pass
     def compute_valve_opening(self):
-        # placeholder
         return 0
-
-class SteamTurbine:
-    def __init__(self):
-        pass
-    def compute_mechanical_power_output(self, turbine_inlet_pressure, turbine_inlet_steam_flow, turbine_outlet_pressure):
-        # Stub logic
-        mechanical_power_generated = turbine_inlet_steam_flow * (turbine_inlet_pressure - turbine_outlet_pressure) * 10  # Dummy formula
-        return {
-            "mechanical_power": mechanical_power_generated
-        }
         
 class Generator:
     def __init__(self):
@@ -77,3 +67,45 @@ class CoolingTower:
     def compute_cooling(self):
         return 0
             
+class SteamTurbine:
+    def __init__(self, efficiency=0.80):
+        self.efficiency = efficiency
+
+    def compute_mechanical_power_output(self, turbine_inlet_pressure, turbine_inlet_temp, turbine_inlet_steam_flow, turbine_outlet_pressure):
+        """
+        Calculate the mechanical power output of the turbine.
+        
+        Parameters:
+            turbine_inlet_pressure (float): Inlet pressure in bar.
+            turbine_inlet_temp (float): Inlet temperature in °C.
+            turbine_inlet_steam_flow (float): Mass flow rate in kg/s.
+            turbine_outlet_pressure (float): Outlet pressure in bar.
+        
+        Returns:
+            dict: A dictionary with the key "mechanical_power" (in MW).
+        """
+        # Convert pressures from bar to MPa (1 bar = 0.1 MPa)
+        p_in = turbine_inlet_pressure * 0.1  
+        p_out = turbine_outlet_pressure * 0.1  
+        # Convert temperature from °C to Kelvin
+        T_in = turbine_inlet_temp + 273.15
+
+        # Get inlet state properties using iapws
+        inlet_state = IAPWS97(P=p_in, T=T_in)
+        h_in = inlet_state.h  # Enthalpy in kJ/kg
+
+        # Simplified estimation of ideal enthalpy drop during expansion:
+        # Here we assume that the ideal (isentropic) enthalpy drop is proportional to the pressure drop.
+        # A rigorous approach would require computing the state at (p_out, s_in).
+        h_drop_ideal = (p_in - p_out) / p_in * h_in  
+        h_out_isentropic = h_in - h_drop_ideal
+
+        # Apply turbine efficiency to get the actual outlet enthalpy.
+        h_out = h_in - self.efficiency * (h_in - h_out_isentropic)
+
+        # Mechanical power (in kW) is mass flow (kg/s) * enthalpy drop (kJ/kg)
+        power_kW = turbine_inlet_steam_flow * (h_in - h_out)
+        # Convert kW to MW
+        power_MW = power_kW / 1e3
+
+        return {"mechanical_power": power_MW}
