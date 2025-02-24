@@ -2,7 +2,6 @@
 
 from powerplantsim.simulation.components import *
 
-
 class SimulationEngine:
     def __init__(self):
         
@@ -49,7 +48,8 @@ class SimulationEngine:
         # 2) Update the turbine using the steam flow from the separator
         turbine_result = self.turbine.compute_mechanical_power_output(
             turbine_inlet_pressure=self.state["separator_pressure"],
-            turbine_inlet_steam_flow=self.state["separator_steam_flow"] / 4,
+            turbine_inlet_temp=self.state["separator_steam_temp"],
+            turbine_inlet_steam_flow=self.state["separator_steam_flow"],  # distribute among 4 turbines
             turbine_outlet_pressure=self.state["condenser_pressure"]
         )
         self.state["turbine_out_power"] = turbine_result["mechanical_power"]
