@@ -1,52 +1,44 @@
+from iapws import IAPWS97
 class Wellhead:
     def __init__(self):
         pass
-    def compute_steam_output(Wellhead_pressure, Wellhead_flow):
-        SteamFromWellHead = Wellhead_pressure * Wellhead_flow
+    def compute_steam_output(self, wellhead_pressure, wellhead_flow):
+        steam_from_wellhead = wellhead_pressure * wellhead_flow
         return {
-            "Steam_from_wellhead": SteamFromWellHead
+            "steam_from_wellhead": steam_from_wellhead
         }
     
-class SteamSeperator:
+class SteamSeparator:
     def __init__(self):
-        pass
-    def compute_waste_water(SteamFromWellhead, waste_index):
-        waste_water_flow =  SteamFromWellhead * waste_index 
+        pass    
+    def process(self, separator_inlet_pressure, separator_inlet_temp, separator_inlet_flow):
+        # Stub logic
+        # In a real scenario, you'd calculate the fraction that becomes steam,
+        # the pressure drop, etc.
         return {
-            "waste_water_flow": waste_water_flow
+            "separator_outlet_pressure": separator_inlet_pressure - 2,                # pretend we drop 2 bar
+            "separator_outlet_steam_flow": separator_inlet_flow * 0.9,                  # 80% becomes steam, for example
+            "separator_outlet_steam_temp": separator_inlet_temp * 0.995,                 # assume 
         }
 
-    def waste_water_energy(waste_water_flow, Wellhead_pressure, steam_seperator_temperature):
-        waste_water_energy = waste_water_flow * steam_seperator_temperature                   #Finna function fyrir útreikning á varma í vatninu.
-        return 1
-    
-    def compute_steam_forward(SteamFromWellhead, waste_water_energy):
-        steam_forward = SteamFromWellhead - waste_water_energy
-        return 0
-    
-    def process(self):
-        # placeholder
-        return 0 
-
-class MoistureSeperator:
+class MoistureSeparator:
     def __init__(self):
         pass
     def compute_waste_water(self):
         # placeholder
         return 0
+    def process(self, separator_outlet_pressure, inlet_temp, inlet_flow):
+        return {
+            "turbine_inlet_pressure": separator_outlet_pressure - 0.5,     # assume 0.5 bar pressure drop
+            "turbine_inlet_temp": inlet_temp * 0.995,               # assume 0.995 heat index
+            "turbine_inlet_flow": inlet_flow * 0.99,                # assume .99 flow index
+        }
+    
 
 class ReliefValve:
     def __init__(self):
         pass
     def compute_valve_opening(self):
-        # placeholder
-        return 0
-
-class SteamTurbine:
-    def __init__(self):
-        pass
-    def compute_mechanical_power_output(self):
-        # placeholder
         return 0
         
 class Generator:
@@ -59,14 +51,61 @@ class Generator:
 class Condenser:
     def __init__(self):
         pass
-    def compute_cooling_capacity(self):
-        # placeholder
-        return 0
+    def compute_cooling_capacity(self, inlet_flow, inlet_temp, dt):
+        # Stub logic
+        # Maybe you model some cooling over time
+        new_pressure = 0.1  # bar
+        new_temp = 40.0
+        return {
+            "pressure": new_pressure,
+            "temperature": new_temp
+        }
     
 class CoolingTower:
     def __init__(self):
         pass
-    def compute_water_cooling_capacity(self):
-        # placeholder
+    def compute_cooling(self):
         return 0
             
+class SteamTurbine:
+    def __init__(self, efficiency=0.233):
+        self.efficiency = efficiency
+
+    def compute_mechanical_power_output(self, turbine_inlet_pressure, turbine_inlet_temp, turbine_inlet_steam_flow, turbine_outlet_pressure):
+        """
+        Calculate the mechanical power output of the turbine.
+        
+        Parameters:
+            turbine_inlet_pressure (float): Inlet pressure in bar.
+            turbine_inlet_temp (float): Inlet temperature in °C.
+            turbine_inlet_steam_flow (float): Mass flow rate in kg/s.
+            turbine_outlet_pressure (float): Outlet pressure in bar.
+        
+        Returns:
+            dict: A dictionary with the key "mechanical_power" (in MW).
+        """
+        # Convert pressures from bar to MPa (1 bar = 0.1 MPa)
+        p_in = turbine_inlet_pressure * 0.1  
+        p_out = turbine_outlet_pressure * 0.1  
+        # Convert temperature from °C to Kelvin
+        T_in = turbine_inlet_temp + 273.15
+
+        # Get inlet state properties using iapws
+        inlet_state = IAPWS97(P=p_in, T=T_in)
+        h_in = inlet_state.h  # Enthalpy in kJ/kg
+
+        # Simplified estimation of ideal enthalpy drop during expansion:
+        # Here we assume that the ideal (isentropic) enthalpy drop is proportional to the pressure drop.
+        # A rigorous approach would require computing the state at (p_out, s_in).
+        h_drop_ideal = (p_in - p_out) / p_in * h_in  
+        h_out_isentropic = h_in - h_drop_ideal
+
+        # Apply turbine efficiency to get the actual outlet enthalpy.
+        h_out = h_in - self.efficiency * (h_in - h_out_isentropic)
+
+        # Mechanical power (in kW) is mass flow (kg/s) * enthalpy drop (kJ/kg)
+        power_kW = turbine_inlet_steam_flow * (h_in - h_out)
+        # Convert kW to MW
+        power_MW = power_kW / 1e3
+
+        return {"mechanical_power": power_MW}
