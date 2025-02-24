@@ -16,9 +16,9 @@ class SteamSeparator:
         # In a real scenario, you'd calculate the fraction that becomes steam,
         # the pressure drop, etc.
         return {
-            "separator_pressure": separator_inlet_pressure - 1.5,                # pretend we drop 2 bar
-            "separator_steam_flow": separator_inlet_flow * 0.9,                  # 80% becomes steam, for example
-            "separator_steam_temp": separator_inlet_temp * 0.995,                 # assume 
+            "separator_outlet_pressure": separator_inlet_pressure - 2,                # pretend we drop 2 bar
+            "separator_outlet_steam_flow": separator_inlet_flow * 0.9,                  # 80% becomes steam, for example
+            "separator_outlet_steam_temp": separator_inlet_temp * 0.995,                 # assume 
         }
 
 class MoistureSeparator:
@@ -27,9 +27,9 @@ class MoistureSeparator:
     def compute_waste_water(self):
         # placeholder
         return 0
-    def process(self, separator_pressure, inlet_temp, inlet_flow):
+    def process(self, separator_outlet_pressure, inlet_temp, inlet_flow):
         return {
-            "turbine_inlet_pressure": separator_pressure - 0.5,     # assume 0.5 bar pressure drop
+            "turbine_inlet_pressure": separator_outlet_pressure - 0.5,     # assume 0.5 bar pressure drop
             "turbine_inlet_temp": inlet_temp * 0.995,               # assume 0.995 heat index
             "turbine_inlet_flow": inlet_flow * 0.99,                # assume .99 flow index
         }
@@ -68,7 +68,7 @@ class CoolingTower:
         return 0
             
 class SteamTurbine:
-    def __init__(self, efficiency=0.80):
+    def __init__(self, efficiency=0.233):
         self.efficiency = efficiency
 
     def compute_mechanical_power_output(self, turbine_inlet_pressure, turbine_inlet_temp, turbine_inlet_steam_flow, turbine_outlet_pressure):
