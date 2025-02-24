@@ -2,11 +2,11 @@
 # A simple flow diagram of the power plant process from left (Wellhead) to right (Cooling Tower).
 
 from PyQt5.QtWidgets import (
-    QGraphicsView, QGraphicsScene, QGraphicsEllipseItem, QGraphicsTextItem,
-    QGraphicsLineItem, QGraphicsRectItem
+    QGraphicsView, QGraphicsScene, QGraphicsRectItem, QGraphicsTextItem,
+    QGraphicsLineItem
 )
-from PyQt5.QtGui import QPen, QBrush, QColor
-from PyQt5.QtCore import Qt, QPointF
+from PyQt5.QtGui import QPainter, QPen, QBrush, QColor
+from PyQt5.QtCore import Qt
 
 class FlowDiagramWidget(QGraphicsView):
     def __init__(self, parent=None):
@@ -14,8 +14,13 @@ class FlowDiagramWidget(QGraphicsView):
         self._scene = QGraphicsScene(self)
         self.setScene(self._scene)
 
-        # Some styling
-        self.setRenderHint(self.renderHints() | self.RenderHints.Antialiasing)
+        # Enable antialiasing
+        self.setRenderHint(QPainter.Antialiasing, True)
+
+        # Optionally, to preserve existing hints:
+        # existing_hints = self.renderHints()
+        # self.setRenderHints(existing_hints | QPainter.Antialiasing)
+
         self.setBackgroundBrush(QColor("#f0f0f0"))
 
         # Initialize the diagram
