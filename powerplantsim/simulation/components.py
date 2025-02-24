@@ -72,18 +72,7 @@ class SteamTurbine:
         self.efficiency = efficiency
 
     def compute_mechanical_power_output(self, turbine_inlet_pressure, turbine_inlet_temp, turbine_inlet_steam_flow, turbine_outlet_pressure):
-        """
-        Calculate the mechanical power output of the turbine.
         
-        Parameters:
-            turbine_inlet_pressure (float): Inlet pressure in bar.
-            turbine_inlet_temp (float): Inlet temperature in °C.
-            turbine_inlet_steam_flow (float): Mass flow rate in kg/s.
-            turbine_outlet_pressure (float): Outlet pressure in bar.
-        
-        Returns:
-            dict: A dictionary with the key "mechanical_power" (in MW).
-        """
         # Convert pressures from bar to MPa (1 bar = 0.1 MPa)
         p_in = turbine_inlet_pressure * 0.1  
         p_out = turbine_outlet_pressure * 0.1  
@@ -108,4 +97,4 @@ class SteamTurbine:
         # Convert kW to MW
         power_MW = power_kW / 1e3
 
-        return {"mechanical_power": power_MW}
+        return {"mechanical_power": round(power_MW, 3)}
