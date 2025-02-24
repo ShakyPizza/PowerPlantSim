@@ -18,15 +18,15 @@ class SimulationEngine:
         self.state = {
             "wellhead_pressure": 10.5,   # barG
             "wellhead_temp": 186.1,      # °C
-            "wellhead_flow": 180,      # kg/s
-            "separator_pressure": None,
-            "separator_steam_flow": None,
-            "separator_steam_temp": None,
+            "wellhead_flow": 85,      # kg/s
+            "separator_outlet_pressure": None,
+            "separator_outlet_steam_flow": None,
+            "separator_outlet_steam_temp": None,
             "waste_water_flow": None,
             "turbine_out_power": 0.0,
             "steam_flow": None,
-            "condenser_pressure": 0.06,   # barA
-            "condenser_temp": 35,      # °C
+            "condenser_pressure": 0.06,
+            "condenser_temp": 35,
         }
 
     def step_simulation(self, dt=1.0):
@@ -40,16 +40,16 @@ class SimulationEngine:
             separator_inlet_temp=self.state["wellhead_temp"],
             separator_inlet_flow=self.state["wellhead_flow"]
         )
-        self.state["separator_pressure"] = separator_result["separator_pressure"]
-        self.state["separator_steam_flow"] = separator_result["separator_steam_flow"]
-        self.state["separator_steam_temp"] = separator_result["separator_steam_temp"]
-        self.state["steam_flow"] = self.state["separator_steam_flow"]
+        self.state["separator_outlet_pressure"] = separator_result["separator_outlet_pressure"]
+        self.state["separator_outlet_steam_flow"] = separator_result["separator_outlet_steam_flow"]
+        self.state["separator_outlet_steam_temp"] = separator_result["separator_outlet_steam_temp"]
+        self.state["steam_flow"] = self.state["separator_outlet_steam_flow"]
 
         # 2) Update the turbine using the steam flow from the separator
         turbine_result = self.turbine.compute_mechanical_power_output(
-            turbine_inlet_pressure=self.state["separator_pressure"],
-            turbine_inlet_temp=self.state["separator_steam_temp"],
-            turbine_inlet_steam_flow=self.state["separator_steam_flow"],  # distribute among 4 turbines
+            turbine_inlet_pressure=self.state["separator_outlet_pressure"],
+            turbine_inlet_temp=self.state["separator_outlet_steam_temp"],
+            turbine_inlet_steam_flow=self.state["separator_outlet_steam_flow"],  # distribute among 4 turbines
             turbine_outlet_pressure=self.state["condenser_pressure"]
         )
         self.state["turbine_out_power"] = turbine_result["mechanical_power"]
