@@ -1,1 +1,3 @@
 iapws
+PyQt5
+pyqtgraph
