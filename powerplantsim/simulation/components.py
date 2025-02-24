@@ -1,3 +1,5 @@
+# powerplantsim/simulation/components.py
+
 from iapws import IAPWS97
 class Wellhead:
     def __init__(self):
@@ -7,7 +9,13 @@ class Wellhead:
         return {
             "steam_from_wellhead": steam_from_wellhead
         }
-    
+
+class ReliefValve:
+    def __init__(self):
+        pass
+    def compute_valve_opening(self):
+        return 0
+
 class SteamSeparator:
     def __init__(self):
         pass    
@@ -18,7 +26,7 @@ class SteamSeparator:
         return {
             "separator_outlet_pressure": separator_inlet_pressure - 2,                # pretend we drop 2 bar
             "separator_outlet_steam_flow": separator_inlet_flow * 0.9,                  # 80% becomes steam, for example
-            "separator_outlet_steam_temp": separator_inlet_temp * 0.995,                 # assume 
+            "separator_outlet_steam_temp": round(separator_inlet_temp * 0.995, 3),                 # assume 
         }
 
 class MoistureSeparator:
@@ -68,7 +76,7 @@ class CoolingTower:
         return 0
             
 class SteamTurbine:
-    def __init__(self, efficiency=0.233):
+    def __init__(self, efficiency=0.223):
         self.efficiency = efficiency
 
     def compute_mechanical_power_output(self, turbine_inlet_pressure, turbine_inlet_temp, turbine_inlet_steam_flow, turbine_outlet_pressure):
@@ -83,9 +91,6 @@ class SteamTurbine:
         inlet_state = IAPWS97(P=p_in, T=T_in)
         h_in = inlet_state.h  # Enthalpy in kJ/kg
 
-        # Simplified estimation of ideal enthalpy drop during expansion:
-        # Here we assume that the ideal (isentropic) enthalpy drop is proportional to the pressure drop.
-        # A rigorous approach would require computing the state at (p_out, s_in).
         h_drop_ideal = (p_in - p_out) / p_in * h_in  
         h_out_isentropic = h_in - h_drop_ideal
 

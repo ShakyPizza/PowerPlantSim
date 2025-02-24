@@ -17,7 +17,7 @@ class SimulationEngine:
         # Create an initial state
         self.state = {
             "wellhead_pressure": 10.5,   # barG
-            "wellhead_temp": 186.1,      # °C
+            "wellhead_temp": 178,      # °C
             "wellhead_flow": 85,      # kg/s
             "separator_outlet_pressure": None,
             "separator_outlet_steam_flow": None,
