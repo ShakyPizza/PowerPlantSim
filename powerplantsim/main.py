@@ -10,6 +10,7 @@ def main():
         print(f"Step {step+1}: Turbine Power = {engine.state['turbine_out_power']} MW")
         print(f"Step {step+1}: Steam Flow = {engine.state['steam_flow']} kg/s")
         print(f"Step {step+1}: Turbine Inlet Pressure = {engine.state['separator_outlet_pressure']} bar")
+        print(f"Step {step+1}: Turbine Inlet Temp = {engine.state['separator_outlet_steam_temp']} °C")
 
     print("Done.")
 
