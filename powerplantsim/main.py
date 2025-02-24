@@ -6,7 +6,7 @@ def main():
 
     print("Starting PowerPlantSim...")
     for step in range(10):  # Simulate 10 steps
-        engine.step_simulation(dt=0.5)
+        engine.step_simulation(dt=1.0)
         print(f"Step {step+1}: Turbine Power = {engine.state['turbine_out_power']} MW")
 
     print("Done.")
