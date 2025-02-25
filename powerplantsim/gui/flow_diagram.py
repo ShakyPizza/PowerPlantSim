@@ -44,13 +44,13 @@ class FlowDiagramWidget(QGraphicsView):
         self.create_component("Cooling Tower", x_positions["Cooling Tower"], y_position)
     
         # Connect the items with lines
-        keys = list(x_positions.keys())  # Ensure we're using correct names
+        keys = list(x_positions.keys())  
         for i in range(len(keys) - 1):
             self.connect_items(self.labels[keys[i]]["box"], self.labels[keys[i + 1]]["box"])
 
     def create_component(self, label, x, y):
         """Creates a component rectangle and text labels for values."""
-        width, height = 80, 40
+        width, height = 120, 40
         rect_item = QGraphicsRectItem(x, y, width, height)
         rect_item.setBrush(QBrush(Qt.white))
         rect_item.setPen(QPen(Qt.black, 2))

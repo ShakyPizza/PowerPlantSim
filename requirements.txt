@@ -1,3 +1,4 @@
 iapws
 PyQt5
 pyqtgraph
+opencv-python-headless
