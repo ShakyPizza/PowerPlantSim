@@ -92,6 +92,7 @@ class MainWindow(QMainWindow):
             "Wellhead Temp": f"{self.sliders['Wellhead Temperature'].value() / 10:.1f} °C",
             "Steam Separator": f"{random.uniform(85, 100):.1f} kg/s",
             "Moisture Sep": f"{random.uniform(80, 95):.1f} kg/s",
+            "Relief Valves": f"{random.uniform(0,15):.1f} %",
             "Turbine": f"{random.uniform(5, 20):.1f} MW",
             "Condenser": f"{random.uniform(30, 40):.1f} °C",
             "Cooling Tower": f"{random.uniform(25, 35):.1f} °C"
