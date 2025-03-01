@@ -46,9 +46,9 @@ class FlowDiagramWidget(QGraphicsView):
     
         # Create items for each major component
         self.create_component("Wellhead", x_positions["Wellhead"], y_positions["Wellhead"])
-        self.create_component("Steam Separator", x_positions["Steam Separator"], y_positions["Steam Separator"])
-        self.create_component("Moisture Sep", x_positions["Moisture Sep"], y_positions["Moisture Sep"])
-        self.create_component("Relief Valves", x_positions["Relief Valves"], y_positions["Relief Valves"])
+        self.create_component("Steam Separator", x_positions["Steam Separator"], y_positions["Steam Separator"])      
+        self.create_component("Moisture Sep", x_positions["Moisture Sep"], y_positions["Moisture Sep"])       
+        self.create_component("Relief Valves", x_positions["Relief Valves"], y_positions["Relief Valves"])     
         self.create_component("Turbine", x_positions["Turbine"], y_positions["Turbine"])
         self.create_component("Condenser", x_positions["Condenser"], y_positions["Condenser"])
         self.create_component("Cooling Tower", x_positions["Cooling Tower"], y_positions["Cooling Tower"])
@@ -83,61 +83,62 @@ class FlowDiagramWidget(QGraphicsView):
 
 
     def connect_items(self, item_from, item_to):
-        """Draws a Z-shaped path and decides which side to originate from based on item positions."""
+        """Draws a Z-shaped path (or straight line if aligned) between two items.
+        The connection lines are drawn beneath the component rectangles.
+        """
         pen = QPen(Qt.black, 2)
         from_rect = item_from.rect()
         to_rect = item_to.rect()
 
-        # Get the center points in *scene* coordinates
+        # Get the center points in scene coordinates
         from_center = item_from.mapToScene(from_rect.center())
         to_center = item_to.mapToScene(to_rect.center())
 
-        # If the first item is to the *right* of the second, originate from its left edge,
-        # else originate from its right edge. For the destination, do the opposite side.
+        # Decide which edge to connect from based on horizontal positions
         if from_center.x() > to_center.x():
-            # item_from is further right, so connect from its left edge to item_to's right edge
+            # item_from is further right: connect from its left edge to item_to's right edge
             start_point = item_from.mapToScene(from_rect.left(), from_rect.center().y())
             end_point = item_to.mapToScene(to_rect.right(), to_rect.center().y())
         else:
-            # item_from is to the left (or same x), so connect from its right edge to item_to's left edge
+            # item_from is to the left: connect from its right edge to item_to's left edge
             start_point = item_from.mapToScene(from_rect.right(), from_rect.center().y())
             end_point = item_to.mapToScene(to_rect.left(), to_rect.center().y())
 
-        # If both components share the same Y, draw a single straight line.
+        # Set a low z-value so that the lines appear below other items
+        z_value = -1
+
+        # If both components share the same Y coordinate, draw a single straight line.
         if start_point.y() == end_point.y():
-            line = QGraphicsLineItem(
-                start_point.x(), start_point.y(),
-                end_point.x(),   end_point.y()
-            )
+            line = QGraphicsLineItem(start_point.x(), start_point.y(),
+                                     end_point.x(), end_point.y())
             line.setPen(pen)
+            line.setZValue(z_value)
             self._scene.addItem(line)
         else:
-            # Draw the 'Z'-shaped path with two 90° corners
+            # Draw a Z-shaped path with two 90° corners
             mid_x = (start_point.x() + end_point.x()) / 2
 
-            # 1) Horizontal segment from start_point.x() to mid_x
-            line1 = QGraphicsLineItem(
-                start_point.x(), start_point.y(),
-                mid_x,           start_point.y()
-            )
+            # Horizontal segment from start_point.x() to mid_x
+            line1 = QGraphicsLineItem(start_point.x(), start_point.y(),
+                                      mid_x, start_point.y())
             line1.setPen(pen)
+            line1.setZValue(z_value)
             self._scene.addItem(line1)
 
-            # 2) Vertical segment from start_point.y() to end_point.y()
-            line2 = QGraphicsLineItem(
-                mid_x,           start_point.y(),
-                mid_x,           end_point.y()
-            )
+            # Vertical segment from start_point.y() to end_point.y()
+            line2 = QGraphicsLineItem(mid_x, start_point.y(),
+                                      mid_x, end_point.y())
             line2.setPen(pen)
+            line2.setZValue(z_value)
             self._scene.addItem(line2)
 
-            # 3) Horizontal segment from mid_x to end_point.x()
-            line3 = QGraphicsLineItem(
-                mid_x,           end_point.y(),
-                end_point.x(),   end_point.y()
-            )
+            # Horizontal segment from mid_x to end_point.x()
+            line3 = QGraphicsLineItem(mid_x, end_point.y(),
+                                      end_point.x(), end_point.y())
             line3.setPen(pen)
+            line3.setZValue(z_value)
             self._scene.addItem(line3)
+
 
 
 
