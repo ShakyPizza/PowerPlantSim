@@ -77,7 +77,7 @@ class CoolingTower:
             
             # 0.223
 class SteamTurbine:
-    def __init__(self, efficiency=1): 
+    def __init__(self, efficiency=0.223): 
         self.efficiency = efficiency
 
     def compute_mechanical_power_output(self, turbine_inlet_pressure, turbine_inlet_temp, turbine_inlet_steam_flow, turbine_outlet_pressure):
