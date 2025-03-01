@@ -1,5 +1,3 @@
-# flow_diagram.py
-
 from PyQt5.QtWidgets import (
     QGraphicsView, QGraphicsScene, QGraphicsRectItem, QGraphicsTextItem,
     QGraphicsLineItem
@@ -24,12 +22,12 @@ class FlowDiagramWidget(QGraphicsView):
 
     def create_flow_diagram(self):
         """Create flow diagram with components and labels."""
-        # Positions (x-coordinates) for each key component
+        # Define positions for each key component
         x_positions = {
-            "Wellhead": 0,
-            "Steam Separator": 150,
+            "Wellhead": 10,
+            "Steam Separator": 50,
+            "Relief Valves": 10,
             "Moisture Sep": 300,
-            "Relief Valves": 150,
             "Turbine": 450,
             "Condenser": 600,
             "Cooling Tower": 750
@@ -37,27 +35,38 @@ class FlowDiagramWidget(QGraphicsView):
         y_positions = {
             "Wellhead": 100,
             "Steam Separator": 200,
-            "Moisture Sep": 300,
             "Relief Valves": 300,
+            "Moisture Sep": 300,
             "Turbine": 400,
             "Condenser": 500,
             "Cooling Tower": 600
         }
-    
-        # Create items for each major component
-        self.create_component("Wellhead", x_positions["Wellhead"], y_positions["Wellhead"])
-        self.create_component("Steam Separator", x_positions["Steam Separator"], y_positions["Steam Separator"])      
-        self.create_component("Moisture Sep", x_positions["Moisture Sep"], y_positions["Moisture Sep"])       
-        self.create_component("Relief Valves", x_positions["Relief Valves"], y_positions["Relief Valves"])     
-        self.create_component("Turbine", x_positions["Turbine"], y_positions["Turbine"])
-        self.create_component("Condenser", x_positions["Condenser"], y_positions["Condenser"])
-        self.create_component("Cooling Tower", x_positions["Cooling Tower"], y_positions["Cooling Tower"])
-    
-        # Connect the items with lines
-        keys = list(x_positions.keys())  
-        for i in range(len(keys) - 1):
-            self.connect_items(self.labels[keys[i]]["box"], self.labels[keys[i + 1]]["box"])
 
+        # Define which side connections enter and exit each component
+        connection_sides = {
+            "Wellhead": ("left", "bottom"),
+            "Steam Separator": ("bottom", "right"),
+            "Relief Valves": ("right", "right"),
+            "Moisture Sep": ("left", "right"),
+            "Turbine": ("left", "right"),
+            "Condenser": ("left", "right"),
+            "Cooling Tower": ("left", "right")
+        }
+
+        # Create items for each major component
+        for key in x_positions:
+            self.create_component(key, x_positions[key], y_positions[key])
+
+        # Define the connection order
+        keys = ["Wellhead", "Steam Separator", "Relief Valves", "Moisture Sep", "Turbine", "Condenser", "Cooling Tower"]
+
+        # Connect components using the predefined connection sides
+        for i in range(len(keys) - 1):
+            self.connect_items(
+                self.labels[keys[i]]["box"], self.labels[keys[i + 1]]["box"],
+                destination_side=connection_sides[keys[i]][1],  # Get exit side
+                origin_side=connection_sides[keys[i + 1]][0]  # Get entry side
+            )
 
     def create_component(self, label, x, y):
         """Creates a component rectangle and text labels for values."""
@@ -81,30 +90,19 @@ class FlowDiagramWidget(QGraphicsView):
         # Store references for updates
         self.labels[label] = {"box": rect_item, "text": value_text}
 
-
-    def connect_items(self, item_from, item_to):
+    def connect_items(self, item_from, item_to, origin_side="right", destination_side="left"):
         """Draws a Z-shaped path (or straight line if aligned) between two items.
-        The connection lines are drawn beneath the component rectangles.
+        Uses `origin_side` and `destination_side` to control connection placement.
         """
         pen = QPen(Qt.black, 2)
         from_rect = item_from.rect()
         to_rect = item_to.rect()
 
-        # Get the center points in scene coordinates
-        from_center = item_from.mapToScene(from_rect.center())
-        to_center = item_to.mapToScene(to_rect.center())
+        # Determine start point based on the specified exit side
+        start_point = self.get_connection_point(item_from, from_rect, destination_side)
+        end_point = self.get_connection_point(item_to, to_rect, origin_side)
 
-        # Decide which edge to connect from based on horizontal positions
-        if from_center.x() > to_center.x():
-            # item_from is further right: connect from its left edge to item_to's right edge
-            start_point = item_from.mapToScene(from_rect.left(), from_rect.center().y())
-            end_point = item_to.mapToScene(to_rect.right(), to_rect.center().y())
-        else:
-            # item_from is to the left: connect from its right edge to item_to's left edge
-            start_point = item_from.mapToScene(from_rect.right(), from_rect.center().y())
-            end_point = item_to.mapToScene(to_rect.left(), to_rect.center().y())
-
-        # Set a low z-value so that the lines appear below other items
+        # Set a low z-value so that the lines appear beneath components
         z_value = -1
 
         # If both components share the same Y coordinate, draw a single straight line.
@@ -118,29 +116,34 @@ class FlowDiagramWidget(QGraphicsView):
             # Draw a Z-shaped path with two 90° corners
             mid_x = (start_point.x() + end_point.x()) / 2
 
-            # Horizontal segment from start_point.x() to mid_x
             line1 = QGraphicsLineItem(start_point.x(), start_point.y(),
                                       mid_x, start_point.y())
             line1.setPen(pen)
             line1.setZValue(z_value)
             self._scene.addItem(line1)
 
-            # Vertical segment from start_point.y() to end_point.y()
             line2 = QGraphicsLineItem(mid_x, start_point.y(),
                                       mid_x, end_point.y())
             line2.setPen(pen)
             line2.setZValue(z_value)
             self._scene.addItem(line2)
 
-            # Horizontal segment from mid_x to end_point.x()
             line3 = QGraphicsLineItem(mid_x, end_point.y(),
                                       end_point.x(), end_point.y())
             line3.setPen(pen)
             line3.setZValue(z_value)
             self._scene.addItem(line3)
 
-
-
+    def get_connection_point(self, item, rect, side):
+        """Returns the connection point coordinates for the specified side."""
+        if side == "right":
+            return item.mapToScene(rect.right(), rect.center().y())
+        elif side == "left":
+            return item.mapToScene(rect.left(), rect.center().y())
+        elif side == "top":
+            return item.mapToScene(rect.center().x(), rect.top())
+        elif side == "bottom":
+            return item.mapToScene(rect.center().x(), rect.bottom())
 
     def update_values(self, data):
         """Updates displayed values for each component."""

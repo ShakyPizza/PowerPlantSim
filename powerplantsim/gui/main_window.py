@@ -11,7 +11,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("PowerPlantSim Overview")
-        self.resize(2000, 600)  # Increased width for sliders
+        self.resize(1800, 600)  # Increased width for sliders
 
         # Central widget container
         central_widget = QWidget()
