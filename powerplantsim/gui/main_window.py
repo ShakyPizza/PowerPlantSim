@@ -1,9 +1,11 @@
 import sys
 import random
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QHBoxLayout, QPushButton, QVBoxLayout, QLabel, QSlider
+    QApplication, QMainWindow, QWidget, QHBoxLayout, QPushButton, QVBoxLayout,
+    QLabel, QSlider, QGroupBox, QGridLayout, QLCDNumber, QFrame, QStatusBar
 )
 from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtGui import QPalette, QColor
 from flow_diagram import FlowDiagramWidget
 from plots import PlotWidget
 
@@ -11,82 +13,194 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("PowerPlantSim Overview")
-        self.resize(1800, 600)  # Increased width for sliders
+        self.resize(1800, 900)  # Increased height for additional controls
+        
+        # Add status bar
+        self.statusBar = QStatusBar()
+        self.setStatusBar(self.statusBar)
+        self.statusBar.showMessage("Simulation running...")
 
         # Central widget container
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
-        # Main layout (horizontal) containing:
-        # 1. Flow diagram
-        # 2. Plot
-        # 3. Control Panel (Sliders)
+        # Main layout (horizontal)
         main_layout = QHBoxLayout()
         central_widget.setLayout(main_layout)
 
+        # Left panel for flow diagram (60% of width)
+        left_panel = QWidget()
+        left_layout = QVBoxLayout()
+        left_panel.setLayout(left_layout)
+        main_layout.addWidget(left_panel, 60)
+
         # Flow diagram
         self.flow_diagram = FlowDiagramWidget()
-        main_layout.addWidget(self.flow_diagram)
+        left_layout.addWidget(self.flow_diagram)
 
+        # Right panel for controls and plots (40% of width)
+        right_panel = QWidget()
+        right_layout = QVBoxLayout()
+        right_panel.setLayout(right_layout)
+        main_layout.addWidget(right_panel, 40)
+
+        # Add control panels
+        self.create_simulation_controls(right_layout)
+        self.create_plant_controls(right_layout)
+        
         # Plot widget
+        plot_group = QGroupBox("Real-time Monitoring")
+        plot_layout = QVBoxLayout()
         self.plot_widget = PlotWidget()
-        main_layout.addWidget(self.plot_widget)
+        plot_layout.addWidget(self.plot_widget)
+        plot_group.setLayout(plot_layout)
+        right_layout.addWidget(plot_group)
 
-        # Control Panel Layout (Sliders)
-        control_layout = QVBoxLayout()
-        main_layout.addLayout(control_layout)
+        # Digital display panel for key metrics
+        self.create_digital_display(right_layout)
 
-        # Sliders for Wellhead Pressure, Temperature, and Flow
-        self.sliders = {}
-        self.labels = {}
-
-        self.add_slider("Wellhead Pressure", 5, 20, 10.5, control_layout)
-        self.add_slider("Wellhead Temperature", 150, 200, 178, control_layout)
-        self.add_slider("Wellhead Flow", 50, 150, 85, control_layout)
-
-        # Button to manually update values (for testing)
-        self.update_button = QPushButton("Update Values")
-        self.update_button.clicked.connect(self.update_simulation_values)
-        control_layout.addWidget(self.update_button)
-
-        # Timer to automatically update simulation values every second
+        # Timer setup
+        self.simulation_running = False
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_simulation_values)
-        self.timer.start(1000)  # Update every second
 
-    def add_slider(self, label, min_val, max_val, default, layout):
-        """Creates a labeled slider for adjusting values"""
-        slider_label = QLabel(f"{label}: {default} {self.get_unit(label)}")
-        layout.addWidget(slider_label)
+    def create_simulation_controls(self, parent_layout):
+        """Creates the simulation control panel"""
+        sim_group = QGroupBox("Simulation Controls")
+        sim_layout = QHBoxLayout()
 
+        # Start/Stop button
+        self.start_stop_btn = QPushButton("Start")
+        self.start_stop_btn.clicked.connect(self.toggle_simulation)
+        sim_layout.addWidget(self.start_stop_btn)
+
+        # Reset button
+        reset_btn = QPushButton("Reset")
+        reset_btn.clicked.connect(self.reset_simulation)
+        sim_layout.addWidget(reset_btn)
+
+        # Speed control
+        self.speed_slider = QSlider(Qt.Horizontal)
+        self.speed_slider.setMinimum(1)
+        self.speed_slider.setMaximum(20)
+        self.speed_slider.setValue(10)
+        self.speed_slider.setTickPosition(QSlider.TicksBelow)
+        sim_layout.addWidget(self.speed_slider)
+        sim_layout.addWidget(QLabel("Speed"))
+
+        sim_group.setLayout(sim_layout)
+        parent_layout.addWidget(sim_group)
+
+    def create_plant_controls(self, parent_layout):
+        """Creates the plant control panel with sliders"""
+        control_group = QGroupBox("Plant Controls")
+        control_layout = QGridLayout()
+
+        # Initialize slider dictionaries
+        self.sliders = {}
+        self.labels = {}
+        self.value_labels = {}
+
+        # Define controls
+        controls = {
+            "Wellhead Pressure": {"min": 5, "max": 20, "default": 10.5, "unit": "barG"},
+            "Wellhead Temperature": {"min": 150, "max": 200, "default": 178, "unit": "°C"},
+            "Wellhead Flow": {"min": 50, "max": 150, "default": 85, "unit": "kg/s"},
+            "Turbine Load": {"min": 0, "max": 100, "default": 80, "unit": "%"},
+            "Cooling Tower Fan Speed": {"min": 0, "max": 100, "default": 70, "unit": "%"}
+        }
+
+        # Create controls
+        for i, (name, params) in enumerate(controls.items()):
+            self.add_control(control_layout, i, name, params)
+
+        control_group.setLayout(control_layout)
+        parent_layout.addWidget(control_group)
+
+    def create_digital_display(self, parent_layout):
+        """Creates a panel with digital displays for key metrics"""
+        display_group = QGroupBox("Key Metrics")
+        display_layout = QGridLayout()
+
+        self.displays = {}
+        metrics = [
+            "Power Output (MW)", "Steam Flow (kg/s)", 
+            "Efficiency (%)", "Condenser Vacuum (kPa)"
+        ]
+
+        for i, metric in enumerate(metrics):
+            lcd = QLCDNumber()
+            lcd.setSegmentStyle(QLCDNumber.Flat)
+            lcd.setDigitCount(6)
+            lcd.display(0.0)
+            
+            # Set a fixed size for consistent appearance
+            lcd.setMinimumHeight(50)
+            
+            # Add label and LCD
+            display_layout.addWidget(QLabel(metric), i, 0)
+            display_layout.addWidget(lcd, i, 1)
+            
+            self.displays[metric] = lcd
+
+        display_group.setLayout(display_layout)
+        parent_layout.addWidget(display_group)
+
+    def add_control(self, layout, row, label, params):
+        """Adds a labeled slider with value display to the layout"""
+        # Label
+        layout.addWidget(QLabel(label), row, 0)
+
+        # Slider
         slider = QSlider(Qt.Horizontal)
-        slider.setMinimum(min_val * 10)  # Multiply by 10 for better precision
-        slider.setMaximum(max_val * 10)
-        slider.setValue(int(round(default)) * 10)
-        slider.setTickInterval((max_val - min_val) * 10 // 5)
+        slider.setMinimum(params["min"] * 10)
+        slider.setMaximum(params["max"] * 10)
+        slider.setValue(int(params["default"] * 10))
         slider.setTickPosition(QSlider.TicksBelow)
         slider.valueChanged.connect(lambda: self.slider_changed(label))
-        layout.addWidget(slider)
-
+        layout.addWidget(slider, row, 1)
         self.sliders[label] = slider
-        self.labels[label] = slider_label
+
+        # Value label
+        value_label = QLabel(f"{params['default']} {params['unit']}")
+        layout.addWidget(value_label, row, 2)
+        self.value_labels[label] = value_label
 
     def slider_changed(self, label):
-        """Updates label text when a slider is moved"""
-        value = self.sliders[label].value() / 10  # Convert back to decimal
-        self.labels[label].setText(f"{label}: {value} {self.get_unit(label)}")
+        """Updates value label when a slider is moved"""
+        value = self.sliders[label].value() / 10
+        self.value_labels[label].setText(f"{value} {self.get_unit(label)}")
+        self.statusBar.showMessage(f"Adjusted {label} to {value} {self.get_unit(label)}")
 
-    def get_unit(self, label):
-        """Returns the appropriate unit for each slider"""
-        units = {
-            "Wellhead Pressure": "barG",
-            "Wellhead Temperature": "°C",
-            "Wellhead Flow": "kg/s"
-        }
-        return units.get(label, "")
+    def toggle_simulation(self):
+        """Toggles the simulation on/off"""
+        self.simulation_running = not self.simulation_running
+        if self.simulation_running:
+            self.start_stop_btn.setText("Stop")
+            self.timer.start(1000 // self.speed_slider.value())
+            self.statusBar.showMessage("Simulation running...")
+        else:
+            self.start_stop_btn.setText("Start")
+            self.timer.stop()
+            self.statusBar.showMessage("Simulation paused")
+
+    def reset_simulation(self):
+        """Resets the simulation to initial conditions"""
+        # Reset plots
+        self.plot_widget.reset_plot()
+        
+        # Reset displays
+        for display in self.displays.values():
+            display.display(0.0)
+            
+        self.statusBar.showMessage("Simulation reset to initial conditions")
 
     def update_simulation_values(self):
-        """Get values from sliders and update the GUI"""
+        """Updates all simulation values"""
+        if not self.simulation_running:
+            return
+
+        # Update flow diagram values
         new_data = {
             "Wellhead": f"{self.sliders['Wellhead Flow'].value() / 10:.1f} kg/s",
             "Wellhead Temp": f"{self.sliders['Wellhead Temperature'].value() / 10:.1f} °C",
@@ -101,11 +215,50 @@ class MainWindow(QMainWindow):
         # Update flow diagram
         self.flow_diagram.update_values(new_data)
 
-        # Update plot (for example, tracking turbine power output)
+        # Update plot with turbine power
         self.plot_widget.update_plot(float(new_data["Turbine"].split()[0]))
+
+        # Update digital displays
+        self.displays["Power Output (MW)"].display(float(new_data["Turbine"].split()[0]))
+        self.displays["Steam Flow (kg/s)"].display(float(new_data["Steam Separator"].split()[0]))
+        self.displays["Efficiency (%)"].display(random.uniform(30, 35))
+        self.displays["Condenser Vacuum (kPa)"].display(random.uniform(8, 12))
+
+    def get_unit(self, label):
+        """Returns the appropriate unit for each control"""
+        units = {
+            "Wellhead Pressure": "barG",
+            "Wellhead Temperature": "°C",
+            "Wellhead Flow": "kg/s",
+            "Turbine Load": "%",
+            "Cooling Tower Fan Speed": "%"
+        }
+        return units.get(label, "")
 
 def main():
     app = QApplication(sys.argv)
+    
+    # Set application style
+    app.setStyle("Fusion")
+    
+    # Create dark palette
+    palette = QPalette()
+    palette.setColor(QPalette.Window, QColor(53, 53, 53))
+    palette.setColor(QPalette.WindowText, Qt.white)
+    palette.setColor(QPalette.Base, QColor(25, 25, 25))
+    palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+    palette.setColor(QPalette.ToolTipBase, Qt.white)
+    palette.setColor(QPalette.ToolTipText, Qt.white)
+    palette.setColor(QPalette.Text, Qt.white)
+    palette.setColor(QPalette.Button, QColor(53, 53, 53))
+    palette.setColor(QPalette.ButtonText, Qt.white)
+    palette.setColor(QPalette.BrightText, Qt.red)
+    palette.setColor(QPalette.Link, QColor(42, 130, 218))
+    palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
+    palette.setColor(QPalette.HighlightedText, Qt.black)
+    
+    app.setPalette(palette)
+    
     window = MainWindow()
     window.show()
     sys.exit(app.exec_())
