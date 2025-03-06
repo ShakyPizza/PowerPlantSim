@@ -1,9 +1,147 @@
 from PyQt5.QtWidgets import (
     QGraphicsView, QGraphicsScene, QGraphicsRectItem, QGraphicsTextItem,
-    QGraphicsLineItem
+    QGraphicsLineItem, QGraphicsPolygonItem, QGraphicsItem, QToolTip
 )
-from PyQt5.QtGui import QPainter, QPen, QBrush, QColor
-from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QPainter, QPen, QBrush, QColor, QPolygonF, QFont, QPainterPath
+from PyQt5.QtCore import Qt, QPointF, QRectF, QTimer
+import numpy as np
+
+class ComponentSymbol:
+    """Base class for component symbols"""
+    def create_symbol(self, scene, x, y, width, height):
+        # Create base container
+        container = QGraphicsRectItem(x, y, width, height)
+        container.setBrush(QBrush(Qt.transparent))
+        container.setPen(QPen(Qt.transparent))
+        scene.addItem(container)
+        return container
+
+class WellheadSymbol(ComponentSymbol):
+    def create_symbol(self, scene, x, y, width, height):
+        container = super().create_symbol(scene, x, y, width, height)
+
+        # Create wellhead symbol (trapezoid shape)
+        wellhead = QGraphicsPolygonItem()
+        polygon = QPolygonF([
+            QPointF(width*0.2, 0),           # Top left
+            QPointF(width*0.8, 0),           # Top right
+            QPointF(width, height*0.8),      # Bottom right
+            QPointF(0, height*0.8)           # Bottom left
+        ])
+        wellhead.setPolygon(polygon)
+        wellhead.setBrush(QBrush(QColor("#CD853F")))  # Brown
+        wellhead.setPen(QPen(Qt.black, 2))
+        wellhead.setParentItem(container)
+
+        # Add small valve indicators at the top
+        valve_width = width * 0.1
+        for i in range(3):
+            x_pos = width * (0.3 + 0.2 * i)
+            valve = QGraphicsRectItem(x_pos, 0, valve_width, height*0.1)
+            valve.setBrush(QBrush(QColor("#8B4513")))
+            valve.setPen(QPen(Qt.black, 1))
+            valve.setParentItem(container)
+
+        return container
+
+class SeparatorSymbol(ComponentSymbol):
+    def create_symbol(self, scene, x, y, width, height):
+        container = super().create_symbol(scene, x, y, width, height)
+
+        # Create separator vessel - use relative positioning
+        vessel = QGraphicsRectItem(0, 0, width, height)
+        vessel.setBrush(QBrush(QColor("#B8B8B8")))
+        vessel.setPen(QPen(Qt.black, 2))
+        vessel.setParentItem(container)
+
+        # Add internal separator line - use relative positioning
+        line = QGraphicsLineItem(0, height*0.7, width, height*0.7)
+        line.setPen(QPen(Qt.black, 1, Qt.DashLine))
+        line.setParentItem(container)
+
+        return container
+
+class TurbineSymbol(ComponentSymbol):
+    def create_symbol(self, scene, x, y, width, height):
+        container = super().create_symbol(scene, x, y, width, height)
+
+        # Create turbine housing
+        housing = QGraphicsRectItem(0, 0, width, height)
+        housing.setBrush(QBrush(QColor("#4682B4")))
+        housing.setPen(QPen(Qt.black, 2))
+        housing.setParentItem(container)
+
+        # Add turbine blades symbol
+        center_x = width/2
+        center_y = height/2
+        radius = min(width, height) * 0.3
+
+        for i in range(6):
+            angle = i * 60
+            blade = QGraphicsLineItem()
+            blade.setPen(QPen(Qt.white, 2))
+            blade.setLine(
+                center_x, center_y,
+                center_x + radius * np.cos(np.radians(angle)),
+                center_y + radius * np.sin(np.radians(angle))
+            )
+            blade.setParentItem(container)
+
+        return container
+
+class CondenserSymbol(ComponentSymbol):
+    def create_symbol(self, scene, x, y, width, height):
+        container = super().create_symbol(scene, x, y, width, height)
+
+        # Create condenser body
+        body = QGraphicsRectItem(0, 0, width, height)
+        body.setBrush(QBrush(QColor("#20B2AA")))
+        body.setPen(QPen(Qt.black, 2))
+        body.setParentItem(container)
+
+        # Add cooling tubes
+        tube_spacing = height / 6
+        for i in range(1, 6):
+            tube = QGraphicsLineItem(width*0.1, i*tube_spacing,
+                                   width*0.9, i*tube_spacing)
+            tube.setPen(QPen(Qt.white, 1))
+            tube.setParentItem(container)
+
+        return container
+
+class CoolingTowerSymbol(ComponentSymbol):
+    def create_symbol(self, scene, x, y, width, height):
+        container = super().create_symbol(scene, x, y, width, height)
+
+        # Create cooling tower shape (hyperbolic)
+        tower = QGraphicsPolygonItem()
+        polygon = QPolygonF([
+            QPointF(width*0.3, 0),
+            QPointF(width*0.7, 0),
+            QPointF(width, height),
+            QPointF(0, height)
+        ])
+        tower.setPolygon(polygon)
+        tower.setBrush(QBrush(QColor("#A0522D")))
+        tower.setPen(QPen(Qt.black, 2))
+        tower.setParentItem(container)
+
+        # Add water droplets
+        for i in range(3):
+            dx = width * (0.3 + 0.2*i)
+            dy = height * 0.3
+            droplet = QGraphicsPolygonItem()
+            drop_poly = QPolygonF([
+                QPointF(dx, dy),
+                QPointF(dx + width*0.05, dy + height*0.1),
+                QPointF(dx - width*0.05, dy + height*0.1)
+            ])
+            droplet.setPolygon(drop_poly)
+            droplet.setBrush(QBrush(QColor("#87CEEB")))
+            droplet.setPen(QPen(Qt.black, 1))
+            droplet.setParentItem(container)
+
+        return container
 
 class FlowDiagramWidget(QGraphicsView):
     def __init__(self, parent=None):
@@ -11,30 +149,49 @@ class FlowDiagramWidget(QGraphicsView):
         self._scene = QGraphicsScene(self)
         self.setScene(self._scene)
 
+        # Enable antialiasing
         self.setRenderHint(QPainter.Antialiasing, True)
-        self.setBackgroundBrush(QColor("#f0f0f0"))
+        self.setRenderHint(QPainter.TextAntialiasing, True)
+        self.setRenderHint(QPainter.SmoothPixmapTransform, True)
 
-        # Dictionary to hold references to component labels
+        # Set dark theme background
+        self.setBackgroundBrush(QColor("#2B2B2B"))
+
+        # Enable mouse tracking for tooltips
+        self.setMouseTracking(True)
+
+        # Dictionary to hold references
         self.labels = {}
+        self.symbols = {}
+
+        # Define flow colors
+        self.flow_colors = {
+            "steam": QColor("#E6E6E6"),  # Light gray for steam
+            "water": QColor("#4169E1"),  # Royal blue for water
+            "mixture": QColor("#B8860B")  # Dark golden for mixture
+        }
 
         # Initialize the diagram
         self.create_flow_diagram()
+        
+        # Fit the view to all items
+        self.fitInView(self._scene.sceneRect(), Qt.KeepAspectRatio)
 
     def create_flow_diagram(self):
         """Create flow diagram with components and labels."""
-        # Define positions for each key component
+        # Define component positions with better spacing
         x_positions = {
-            "Wellhead": 10,
-            "Steam Separator": 50,
-            "Relief Valves": 10,
-            "Moisture Sep": 300,
-            "Turbine": 450,
-            "Condenser": 600,
-            "Cooling Tower": 750
+            "Wellhead": 100,
+            "Steam Separator": 300,
+            "Relief Valves": 300,
+            "Moisture Sep": 500,
+            "Turbine": 700,
+            "Condenser": 900,
+            "Cooling Tower": 1100
         }
         y_positions = {
-            "Wellhead": 100,
-            "Steam Separator": 200,
+            "Wellhead": 50,
+            "Steam Separator": 150,
             "Relief Valves": 300,
             "Moisture Sep": 300,
             "Turbine": 400,
@@ -42,111 +199,166 @@ class FlowDiagramWidget(QGraphicsView):
             "Cooling Tower": 600
         }
 
-        # Define which side connections enter and exit each component
-        connection_sides = {
-            "Wellhead": ("left", "bottom"),
-            "Steam Separator": ("bottom", "right"),
-            "Relief Valves": ("right", "right"),
-            "Moisture Sep": ("left", "right"),
-            "Turbine": ("left", "right"),
-            "Condenser": ("left", "right"),
-            "Cooling Tower": ("left", "right")
+        # Define component symbols
+        component_symbols = {
+            "Wellhead": WellheadSymbol(),
+            "Steam Separator": SeparatorSymbol(),
+            "Relief Valves": None,
+            "Moisture Sep": SeparatorSymbol(),
+            "Turbine": TurbineSymbol(),
+            "Condenser": CondenserSymbol(),
+            "Cooling Tower": CoolingTowerSymbol()
         }
 
-        # Create items for each major component
-        for key in x_positions:
-            self.create_component(key, x_positions[key], y_positions[key])
+        # Create components
+        for key, symbol_class in component_symbols.items():
+            self.create_component(key, x_positions[key], y_positions[key], symbol_class)
 
-        # Define the connection order
-        keys = ["Wellhead", "Steam Separator", "Relief Valves", "Moisture Sep", "Turbine", "Condenser", "Cooling Tower"]
+        # Define flow connections
+        connections = [
+            ("Wellhead", "Steam Separator", "mixture", [(0.5, 0), (0.5, 1)]),
+            ("Steam Separator", "Relief Valves", "steam", [(1, 0.3), (0, 0.5)]),
+            ("Steam Separator", "Moisture Sep", "steam", [(1, 0.7), (0, 0.5)]),
+            ("Moisture Sep", "Turbine", "steam", [(1, 0.5), (0, 0.5)]),
+            ("Turbine", "Condenser", "mixture", [(1, 0.5), (0, 0.5)]),
+            ("Condenser", "Cooling Tower", "water", [(1, 0.5), (0, 0.5)])
+        ]
 
-        # Connect components using the predefined connection sides
-        for i in range(len(keys) - 1):
-            self.connect_items(
-                self.labels[keys[i]]["box"], self.labels[keys[i + 1]]["box"],
-                destination_side=connection_sides[keys[i]][1],  # Get exit side
-                origin_side=connection_sides[keys[i + 1]][0]  # Get entry side
+        # Create connections
+        for from_comp, to_comp, flow_type, points in connections:
+            self.create_flow_connection(
+                self.symbols[from_comp],
+                self.symbols[to_comp],
+                flow_type,
+                points
             )
 
-    def create_component(self, label, x, y):
-        """Creates a component rectangle and text labels for values."""
-        width, height = 120, 40
-        rect_item = QGraphicsRectItem(x, y, width, height)
-        rect_item.setBrush(QBrush(Qt.white))
-        rect_item.setPen(QPen(Qt.black, 2))
-        self._scene.addItem(rect_item)
-
-        text_item = QGraphicsTextItem(label)
-        text_item.setDefaultTextColor(Qt.black)
-        text_item.setPos(x + 5, y + 5)
-        self._scene.addItem(text_item)
-
-        # Add a text label below for displaying values
-        value_text = QGraphicsTextItem("Value: --")
-        value_text.setDefaultTextColor(Qt.blue)
-        value_text.setPos(x + 5, y + 50)  # Positioned below the component
-        self._scene.addItem(value_text)
-
-        # Store references for updates
-        self.labels[label] = {"box": rect_item, "text": value_text}
-
-    def connect_items(self, item_from, item_to, origin_side="right", destination_side="left"):
-        """Draws a Z-shaped path (or straight line if aligned) between two items.
-        Uses `origin_side` and `destination_side` to control connection placement.
-        """
-        pen = QPen(Qt.black, 2)
-        from_rect = item_from.rect()
-        to_rect = item_to.rect()
-
-        # Determine start point based on the specified exit side
-        start_point = self.get_connection_point(item_from, from_rect, destination_side)
-        end_point = self.get_connection_point(item_to, to_rect, origin_side)
-
-        # Set a low z-value so that the lines appear beneath components
-        z_value = -1
-
-        # If both components share the same Y coordinate, draw a single straight line.
-        if start_point.y() == end_point.y():
-            line = QGraphicsLineItem(start_point.x(), start_point.y(),
-                                     end_point.x(), end_point.y())
-            line.setPen(pen)
-            line.setZValue(z_value)
-            self._scene.addItem(line)
+    def create_component(self, label, x, y, symbol_class=None):
+        """Creates a component with custom symbol and value display."""
+        width, height = 120, 80
+        
+        # Create symbol
+        if symbol_class:
+            container = symbol_class.create_symbol(self._scene, x, y, width, height)
         else:
-            # Draw a Z-shaped path with two 90° corners
-            mid_x = (start_point.x() + end_point.x()) / 2
+            container = QGraphicsRectItem(x, y, width, height)
+            container.setBrush(QBrush(QColor("#404040")))
+            container.setPen(QPen(Qt.white, 2))
+            self._scene.addItem(container)
+        
+        # Store the container, not just the symbol
+        self.symbols[label] = container
 
-            line1 = QGraphicsLineItem(start_point.x(), start_point.y(),
-                                      mid_x, start_point.y())
-            line1.setPen(pen)
-            line1.setZValue(z_value)
-            self._scene.addItem(line1)
+        # Create label container
+        label_container = QGraphicsRectItem(x, y - 30, width, height + 40)
+        label_container.setBrush(QBrush(QColor(0, 0, 0, 0)))
+        label_container.setPen(QPen(QColor(0, 0, 0, 0)))
+        self._scene.addItem(label_container)
 
-            line2 = QGraphicsLineItem(mid_x, start_point.y(),
-                                      mid_x, end_point.y())
-            line2.setPen(pen)
-            line2.setZValue(z_value)
-            self._scene.addItem(line2)
+        # Add component label
+        text_item = QGraphicsTextItem()
+        text_item.setPlainText(label)
+        text_item.setDefaultTextColor(Qt.white)
+        text_item.setFont(QFont("Arial", 10, QFont.Bold))
+        
+        # Center the text
+        text_width = text_item.boundingRect().width()
+        text_item.setPos(x + (width - text_width)/2, y - 25)
+        text_item.setParentItem(label_container)
 
-            line3 = QGraphicsLineItem(mid_x, end_point.y(),
-                                      end_point.x(), end_point.y())
-            line3.setPen(pen)
-            line3.setZValue(z_value)
-            self._scene.addItem(line3)
+        # Add value display
+        value_text = QGraphicsTextItem()
+        value_text.setPlainText("--")
+        value_text.setDefaultTextColor(QColor("#00FF00"))
+        value_text.setFont(QFont("Consolas", 10))
+        value_text.setPos(x + 5, y + height + 5)
+        value_text.setParentItem(label_container)
 
-    def get_connection_point(self, item, rect, side):
-        """Returns the connection point coordinates for the specified side."""
-        if side == "right":
-            return item.mapToScene(rect.right(), rect.center().y())
-        elif side == "left":
-            return item.mapToScene(rect.left(), rect.center().y())
-        elif side == "top":
-            return item.mapToScene(rect.center().x(), rect.top())
-        elif side == "bottom":
-            return item.mapToScene(rect.center().x(), rect.bottom())
+        # Store references
+        self.labels[label] = {
+            "symbol": container,
+            "text": value_text,
+            "container": label_container
+        }
+
+        # Add tooltip
+        container.setToolTip(f"{label}\nClick for details")
+
+    def create_flow_connection(self, from_item, to_item, flow_type, points):
+        """Creates a flow connection with arrows and color coding."""
+        # Get the bounding rectangles for positioning
+        from_rect = from_item.boundingRect()
+        to_rect = to_item.boundingRect()
+        
+        # Get scene positions
+        from_pos = from_item.scenePos()
+        to_pos = to_item.scenePos()
+
+        # Calculate start and end points using relative positions
+        start_x = from_pos.x() + from_rect.width() * points[0][0]
+        start_y = from_pos.y() + from_rect.height() * points[0][1]
+        end_x = to_pos.x() + to_rect.width() * points[1][0]
+        end_y = to_pos.y() + to_rect.height() * points[1][1]
+
+        start = QPointF(start_x, start_y)
+        end = QPointF(end_x, end_y)
+
+        # Create path
+        path = QPainterPath()
+        path.moveTo(start)
+
+        # Create curved path if there's significant vertical difference
+        if abs(start.y() - end.y()) > 10:
+            ctrl1 = QPointF(start.x() + (end.x() - start.x())/3, start.y())
+            ctrl2 = QPointF(start.x() + 2*(end.x() - start.x())/3, end.y())
+            path.cubicTo(ctrl1, ctrl2, end)
+        else:
+            path.lineTo(end)
+
+        # Create flow line
+        pen = QPen(self.flow_colors[flow_type], 3)
+        if flow_type == "steam":
+            pen.setStyle(Qt.DashLine)
+        
+        path_item = self._scene.addPath(path, pen)
+        path_item.setZValue(-1)
+
+        # Add arrow
+        arrow_size = 10
+        angle = 20
+        arrow = QPolygonF([
+            end,
+            end + QPointF(-arrow_size * np.cos(np.radians(angle)),
+                         -arrow_size * np.sin(np.radians(angle))),
+            end + QPointF(-arrow_size * np.cos(np.radians(-angle)),
+                         -arrow_size * np.sin(np.radians(-angle)))
+        ])
+        arrow_item = QGraphicsPolygonItem(arrow)
+        arrow_item.setBrush(self.flow_colors[flow_type])
+        arrow_item.setPen(QPen(self.flow_colors[flow_type], 1))
+        self._scene.addItem(arrow_item)
 
     def update_values(self, data):
-        """Updates displayed values for each component."""
+        """Updates displayed values for each component with animation."""
         for key, value in data.items():
             if key in self.labels:
-                self.labels[key]["text"].setPlainText(f"Value: {value}")
+                self.labels[key]["text"].setPlainText(value)
+                
+                # Visual feedback
+                original_brush = self.labels[key]["symbol"].brush()
+                highlight_brush = QBrush(QColor("#3D5A80"))
+                self.labels[key]["symbol"].setBrush(highlight_brush)
+                QTimer.singleShot(100, lambda: self.labels[key]["symbol"].setBrush(original_brush))
+
+    def wheelEvent(self, event):
+        """Implements zoom functionality."""
+        zoom_factor = 1.15
+        if event.angleDelta().y() > 0:
+            self.scale(zoom_factor, zoom_factor)
+        else:
+            self.scale(1/zoom_factor, 1/zoom_factor)
+
+    def resizeEvent(self, event):
+        """Handle resize events to maintain the view."""
+        super().resizeEvent(event)
+        self.fitInView(self._scene.sceneRect(), Qt.KeepAspectRatio)
