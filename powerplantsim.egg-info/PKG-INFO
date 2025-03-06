@@ -1,0 +1,11 @@
+Metadata-Version: 2.2
+Name: powerplantsim
+Version: 0.1.0
+Requires-Python: >=3.7
+License-File: LICENSE
+Requires-Dist: iapws
+Requires-Dist: PyQt5
+Requires-Dist: pyqtgraph
+Requires-Dist: opencv-python-headless
+Dynamic: requires-dist
+Dynamic: requires-python

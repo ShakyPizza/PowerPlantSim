@@ -8,6 +8,7 @@ from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QPalette, QColor
 from flow_diagram import FlowDiagramWidget
 from plots import PlotWidget
+from powerplantsim.simulation.engine import SimulationEngine
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -19,6 +20,11 @@ class MainWindow(QMainWindow):
         self.statusBar = QStatusBar()
         self.setStatusBar(self.statusBar)
         self.statusBar.showMessage("Simulation running...")
+
+        # Initialize simulation engine first
+        self.simulation_engine = SimulationEngine()
+        self.simulation_time = 0.0
+        self.dt = 0.1  # simulation time step in seconds
 
         # Central widget container
         central_widget = QWidget()
@@ -101,7 +107,7 @@ class MainWindow(QMainWindow):
         self.labels = {}
         self.value_labels = {}
 
-        # Define controls
+        # Define controls with ranges and units
         controls = {
             "Wellhead Pressure": {"min": 5, "max": 20, "default": 10.5, "unit": "barG"},
             "Wellhead Temperature": {"min": 150, "max": 200, "default": 178, "unit": "°C"},
@@ -113,6 +119,26 @@ class MainWindow(QMainWindow):
         # Create controls
         for i, (name, params) in enumerate(controls.items()):
             self.add_control(control_layout, i, name, params)
+            
+            # Initialize with simulation state values if available
+            if name == "Wellhead Pressure":
+                self.sliders[name].setValue(int(self.simulation_engine.state["wellhead_pressure"] * 10))
+            elif name == "Wellhead Temperature":
+                self.sliders[name].setValue(int(self.simulation_engine.state["wellhead_temp"] * 10))
+            elif name == "Wellhead Flow":
+                self.sliders[name].setValue(int(self.simulation_engine.state["wellhead_flow"] * 10))
+            elif name == "Turbine Load":
+                # Convert power output to percentage
+                max_power = 50.0
+                power_percent = (self.simulation_engine.state["turbine_out_power"] / max_power) * 100
+                self.sliders[name].setValue(int(power_percent * 10))
+            elif name == "Cooling Tower Fan Speed":
+                # Convert condenser temperature to fan speed percentage
+                base_temp = 35.0
+                temp_range = 10.0
+                current_temp = self.simulation_engine.state["condenser_temp"]
+                fan_speed = 100 - ((current_temp - base_temp) / temp_range * 100)
+                self.sliders[name].setValue(int(fan_speed * 10))
 
         control_group.setLayout(control_layout)
         parent_layout.addWidget(control_group)
@@ -124,8 +150,9 @@ class MainWindow(QMainWindow):
 
         self.displays = {}
         metrics = [
-            "Power Output (MW)", "Steam Flow (kg/s)", 
-            "Efficiency (%)", "Condenser Vacuum (kPa)"
+            "Wellhead Pressure", "Wellhead Temperature", "Wellhead Flow",
+            "Separator Pressure", "Steam Flow", "Turbine Power",
+            "Condenser Pressure", "Condenser Temperature"
         ]
 
         for i, metric in enumerate(metrics):
@@ -167,13 +194,33 @@ class MainWindow(QMainWindow):
         self.value_labels[label] = value_label
 
     def slider_changed(self, label):
-        """Updates value label when a slider is moved"""
+        """Updates value label when a slider is moved and updates simulation state"""
         value = self.sliders[label].value() / 10
         self.value_labels[label].setText(f"{value} {self.get_unit(label)}")
+        
+        # Update simulation state based on slider changes
+        if label == "Wellhead Pressure":
+            self.simulation_engine.state["wellhead_pressure"] = value
+        elif label == "Wellhead Temperature":
+            self.simulation_engine.state["wellhead_temp"] = value
+        elif label == "Wellhead Flow":
+            self.simulation_engine.state["wellhead_flow"] = value
+        elif label == "Turbine Load":
+            # Convert percentage to actual power output
+            max_power = 50.0  # Maximum power output in MW
+            self.simulation_engine.state["turbine_out_power"] = (value / 100.0) * max_power
+        elif label == "Cooling Tower Fan Speed":
+            # Adjust condenser temperature based on fan speed
+            base_temp = 35.0  # Base condenser temperature
+            temp_range = 10.0  # Temperature range affected by fan speed
+            self.simulation_engine.state["condenser_temp"] = base_temp + (100 - value) / 100.0 * temp_range
+        
+        # Update displays with new simulation values
+        self.update_simulation_values()
         self.statusBar.showMessage(f"Adjusted {label} to {value} {self.get_unit(label)}")
 
     def toggle_simulation(self):
-        """Toggles the simulation on/off"""
+        """Start/Stop the simulation"""
         self.simulation_running = not self.simulation_running
         if self.simulation_running:
             self.start_stop_btn.setText("Stop")
@@ -185,44 +232,46 @@ class MainWindow(QMainWindow):
             self.statusBar.showMessage("Simulation paused")
 
     def reset_simulation(self):
-        """Resets the simulation to initial conditions"""
-        # Reset plots
-        self.plot_widget.reset_plot()
-        
-        # Reset displays
-        for display in self.displays.values():
-            display.display(0.0)
-            
-        self.statusBar.showMessage("Simulation reset to initial conditions")
+        """Reset the simulation to initial conditions"""
+        self.simulation_running = False
+        self.simulation_time = 0.0
+        self.simulation_engine = SimulationEngine()  # Create fresh simulation
+        self.start_stop_btn.setText("Start")
+        self.update_simulation_values()  # Update displays with initial values
 
     def update_simulation_values(self):
-        """Updates all simulation values"""
-        if not self.simulation_running:
-            return
+        """Update all display values from the simulation engine"""
+        if self.simulation_running:
+            # Step the simulation forward
+            self.simulation_engine.step_simulation(self.dt)
+            self.simulation_time += self.dt
 
-        # Update flow diagram values
-        new_data = {
-            "Wellhead": f"{self.sliders['Wellhead Flow'].value() / 10:.1f} kg/s",
-            "Wellhead Temp": f"{self.sliders['Wellhead Temperature'].value() / 10:.1f} °C",
-            "Steam Separator": f"{random.uniform(85, 100):.1f} kg/s",
-            "Moisture Sep": f"{random.uniform(80, 95):.1f} kg/s",
-            "Relief Valves": f"{random.uniform(0,15):.1f} %",
-            "Turbine": f"{random.uniform(5, 20):.1f} MW",
-            "Condenser": f"{random.uniform(30, 40):.1f} °C",
-            "Cooling Tower": f"{random.uniform(25, 35):.1f} °C"
-        }
+            # Update displays with actual simulation values
+            state = self.simulation_engine.state
+            
+            # Update wellhead values
+            self.displays["Wellhead Pressure"].display(f"{state['wellhead_pressure']:.1f}")
+            self.displays["Wellhead Temperature"].display(f"{state['wellhead_temp']:.1f}")
+            self.displays["Wellhead Flow"].display(f"{state['wellhead_flow']:.1f}")
+            
+            # Update separator values
+            if state['separator_outlet_pressure'] is not None:
+                self.displays["Separator Pressure"].display(f"{state['separator_outlet_pressure']:.1f}")
+            if state['separator_outlet_steam_flow'] is not None:
+                self.displays["Steam Flow"].display(f"{state['separator_outlet_steam_flow']:.1f}")
+            
+            # Update turbine values
+            self.displays["Turbine Power"].display(f"{state['turbine_out_power']:.1f}")
+            
+            # Update condenser values
+            self.displays["Condenser Pressure"].display(f"{state['condenser_pressure']:.3f}")
+            self.displays["Condenser Temperature"].display(f"{state['condenser_temp']:.1f}")
 
-        # Update flow diagram
-        self.flow_diagram.update_values(new_data)
+            # Update status bar with simulation time
+            self.statusBar.showMessage(f"Simulation running... Time: {self.simulation_time:.1f} s")
 
-        # Update plot with turbine power
-        self.plot_widget.update_plot(float(new_data["Turbine"].split()[0]))
-
-        # Update digital displays
-        self.displays["Power Output (MW)"].display(float(new_data["Turbine"].split()[0]))
-        self.displays["Steam Flow (kg/s)"].display(float(new_data["Steam Separator"].split()[0]))
-        self.displays["Efficiency (%)"].display(random.uniform(30, 35))
-        self.displays["Condenser Vacuum (kPa)"].display(random.uniform(8, 12))
+            # Update flow diagram
+            self.flow_diagram.update_values(state)
 
     def get_unit(self, label):
         """Returns the appropriate unit for each control"""

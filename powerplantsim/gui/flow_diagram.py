@@ -390,17 +390,109 @@ class FlowDiagramWidget(QGraphicsView):
         arrow_item.setPen(QPen(self.flow_colors[flow_type], 1))
         self._scene.addItem(arrow_item)
 
-    def update_values(self, data):
-        """Updates displayed values for each component with animation."""
-        for key, value in data.items():
-            if key in self.labels:
-                self.labels[key]["text"].setPlainText(value)
-                
-                # Visual feedback
-                original_brush = self.labels[key]["symbol"].brush()
-                highlight_brush = QBrush(QColor("#3D5A80"))
-                self.labels[key]["symbol"].setBrush(highlight_brush)
-                QTimer.singleShot(100, lambda: self.labels[key]["symbol"].setBrush(original_brush))
+    def update_values(self, state):
+        """Updates the component values with simulation data"""
+        # Update wellhead values
+        wellhead_text = (
+            f"Pressure: {state['wellhead_pressure']:.1f} barG\n"
+            f"Temperature: {state['wellhead_temp']:.1f} °C\n"
+            f"Flow: {state['wellhead_flow']:.1f} kg/s"
+        )
+        self.labels["Wellhead"]["text"].setPlainText(wellhead_text)
+
+        # Update separator values
+        if state['separator_outlet_pressure'] is not None:
+            separator_text = (
+                f"Outlet Pressure: {state['separator_outlet_pressure']:.1f} barG\n"
+                f"Steam Flow: {state['separator_outlet_steam_flow']:.1f} kg/s\n"
+                f"Steam Temp: {state['separator_outlet_steam_temp']:.1f} °C"
+            )
+            self.labels["Steam Separator"]["text"].setPlainText(separator_text)
+
+        # Update turbine values
+        turbine_text = f"Power Output: {state['turbine_out_power']:.1f} MW"
+        self.labels["Turbine"]["text"].setPlainText(turbine_text)
+
+        # Update condenser values
+        condenser_text = (
+            f"Pressure: {state['condenser_pressure']:.3f} barA\n"
+            f"Temperature: {state['condenser_temp']:.1f} °C"
+        )
+        self.labels["Condenser"]["text"].setPlainText(condenser_text)
+
+        # Color-code components based on their state
+        self.update_component_colors(state)
+
+    def update_component_colors(self, state):
+        """Updates component colors based on their operational state"""
+        # Helper function to get color based on value range
+        def get_color(value, min_val, max_val, good_range=(0.3, 0.7)):
+            if value is None:
+                return QColor("#808080")  # Gray for unknown state
+            
+            # Normalize value to 0-1 range
+            normalized = (value - min_val) / (max_val - min_val)
+            
+            if normalized < good_range[0]:
+                # Too low - use blue to yellow gradient
+                ratio = normalized / good_range[0]
+                return QColor(
+                    int(255 * ratio),  # R
+                    int(255 * ratio),  # G
+                    255                # B
+                )
+            elif normalized > good_range[1]:
+                # Too high - use yellow to red gradient
+                ratio = (normalized - good_range[1]) / (1 - good_range[1])
+                return QColor(
+                    255,               # R
+                    int(255 * (1 - ratio)),  # G
+                    0                  # B
+                )
+            else:
+                # Good range - use green
+                return QColor("#32CD32")  # Lime green
+
+        # Wellhead coloring based on pressure
+        wellhead_color = get_color(
+            state['wellhead_pressure'],
+            min_val=8.0,    # Minimum acceptable pressure
+            max_val=12.0    # Maximum acceptable pressure
+        )
+        self.labels["Wellhead"]["symbol"].setBrush(QBrush(wellhead_color))
+
+        # Separator coloring based on steam flow
+        if state['separator_outlet_steam_flow'] is not None:
+            separator_color = get_color(
+                state['separator_outlet_steam_flow'],
+                min_val=70.0,   # Minimum acceptable flow
+                max_val=100.0   # Maximum acceptable flow
+            )
+            self.labels["Steam Separator"]["symbol"].setBrush(QBrush(separator_color))
+
+        # Turbine coloring based on power output
+        turbine_color = get_color(
+            state['turbine_out_power'],
+            min_val=0.0,    # Minimum power
+            max_val=50.0    # Maximum expected power
+        )
+        self.labels["Turbine"]["symbol"].setBrush(QBrush(turbine_color))
+
+        # Condenser coloring based on pressure (vacuum)
+        condenser_color = get_color(
+            state['condenser_pressure'],
+            min_val=0.04,   # Minimum acceptable vacuum
+            max_val=0.08,   # Maximum acceptable vacuum
+            good_range=(0.4, 0.6)
+        )
+        self.labels["Condenser"]["symbol"].setBrush(QBrush(condenser_color))
+
+        # Add visual feedback animation
+        for key in self.labels:
+            original_brush = self.labels[key]["symbol"].brush()
+            highlight_brush = QBrush(original_brush.color().lighter(120))
+            self.labels[key]["symbol"].setBrush(highlight_brush)
+            QTimer.singleShot(100, lambda k=key, b=original_brush: self.labels[k]["symbol"].setBrush(b))
 
     def wheelEvent(self, event):
         """Implements zoom functionality."""
