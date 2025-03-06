@@ -193,7 +193,7 @@ class FlowDiagramWidget(QGraphicsView):
         x_positions = {
             "Wellhead": 100,
             "Steam Separator": 300,
-            "Relief Valves": 400,
+            "Relief Valves": 500,
             "Moisture Sep": 600,
             "Turbine": 800,
             "Condenser": 1000,
@@ -376,7 +376,7 @@ class FlowDiagramWidget(QGraphicsView):
         path_item.setZValue(-1)
 
         # Add arrow
-        arrow_size = 10
+        arrow_size = 20
         angle = 20
         arrow = QPolygonF([
             end,
