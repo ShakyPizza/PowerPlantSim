@@ -10,7 +10,9 @@ class ComponentSymbol:
     """Base class for component symbols"""
     def create_symbol(self, scene, x, y, width, height):
         # Create base container
-        container = QGraphicsRectItem(x, y, width, height)
+        container = QGraphicsRectItem()
+        container.setRect(0, 0, width, height)  # Set local coordinates
+        container.setPos(x, y)  # Set position in scene
         container.setBrush(QBrush(Qt.transparent))
         container.setPen(QPen(Qt.transparent))
         scene.addItem(container)
@@ -48,13 +50,13 @@ class SeparatorSymbol(ComponentSymbol):
     def create_symbol(self, scene, x, y, width, height):
         container = super().create_symbol(scene, x, y, width, height)
 
-        # Create separator vessel - use relative positioning
-        vessel = QGraphicsRectItem(0, 0, width, height)
+        # Create separator vessel
+        vessel = QGraphicsRectItem(0, 0, width, height)  # Local coordinates
         vessel.setBrush(QBrush(QColor("#B8B8B8")))
         vessel.setPen(QPen(Qt.black, 2))
         vessel.setParentItem(container)
 
-        # Add internal separator line - use relative positioning
+        # Add internal separator line
         line = QGraphicsLineItem(0, height*0.7, width, height*0.7)
         line.setPen(QPen(Qt.black, 1, Qt.DashLine))
         line.setParentItem(container)
@@ -79,12 +81,12 @@ class TurbineSymbol(ComponentSymbol):
         for i in range(6):
             angle = i * 60
             blade = QGraphicsLineItem()
-            blade.setPen(QPen(Qt.white, 2))
             blade.setLine(
                 center_x, center_y,
                 center_x + radius * np.cos(np.radians(angle)),
                 center_y + radius * np.sin(np.radians(angle))
             )
+            blade.setPen(QPen(Qt.white, 2))
             blade.setParentItem(container)
 
         return container
@@ -102,8 +104,7 @@ class CondenserSymbol(ComponentSymbol):
         # Add cooling tubes
         tube_spacing = height / 6
         for i in range(1, 6):
-            tube = QGraphicsLineItem(width*0.1, i*tube_spacing,
-                                   width*0.9, i*tube_spacing)
+            tube = QGraphicsLineItem(0, i*tube_spacing, width, i*tube_spacing)
             tube.setPen(QPen(Qt.white, 1))
             tube.setParentItem(container)
 
@@ -160,6 +161,9 @@ class FlowDiagramWidget(QGraphicsView):
         # Enable mouse tracking for tooltips
         self.setMouseTracking(True)
 
+        # Set scene rect to accommodate all components
+        self._scene.setSceneRect(0, 0, 1300, 800)
+
         # Dictionary to hold references
         self.labels = {}
         self.symbols = {}
@@ -174,8 +178,14 @@ class FlowDiagramWidget(QGraphicsView):
         # Initialize the diagram
         self.create_flow_diagram()
         
-        # Fit the view to all items
-        self.fitInView(self._scene.sceneRect(), Qt.KeepAspectRatio)
+        # Update scene rect to ensure all items are visible
+        self._scene.setSceneRect(self._scene.itemsBoundingRect())
+        
+        # Fit the view to all items with some margin
+        self.fitInView(self._scene.sceneRect().adjusted(-50, -50, 50, 50), Qt.KeepAspectRatio)
+        
+        # Set a minimum size for the widget
+        self.setMinimumSize(800, 600)
 
     def create_flow_diagram(self):
         """Create flow diagram with components and labels."""
@@ -183,19 +193,19 @@ class FlowDiagramWidget(QGraphicsView):
         x_positions = {
             "Wellhead": 100,
             "Steam Separator": 300,
-            "Relief Valves": 300,
-            "Moisture Sep": 500,
-            "Turbine": 700,
-            "Condenser": 900,
-            "Cooling Tower": 1100
+            "Relief Valves": 400,
+            "Moisture Sep": 600,
+            "Turbine": 800,
+            "Condenser": 1000,
+            "Cooling Tower": 1200
         }
         y_positions = {
             "Wellhead": 50,
             "Steam Separator": 150,
             "Relief Valves": 300,
-            "Moisture Sep": 300,
-            "Turbine": 400,
-            "Condenser": 500,
+            "Moisture Sep": 150,
+            "Turbine": 300,
+            "Condenser": 450,
             "Cooling Tower": 600
         }
 
@@ -203,7 +213,7 @@ class FlowDiagramWidget(QGraphicsView):
         component_symbols = {
             "Wellhead": WellheadSymbol(),
             "Steam Separator": SeparatorSymbol(),
-            "Relief Valves": None,
+            "Relief Valves": None,  # Basic rectangle for relief valves
             "Moisture Sep": SeparatorSymbol(),
             "Turbine": TurbineSymbol(),
             "Condenser": CondenserSymbol(),
@@ -212,26 +222,65 @@ class FlowDiagramWidget(QGraphicsView):
 
         # Create components
         for key, symbol_class in component_symbols.items():
-            self.create_component(key, x_positions[key], y_positions[key], symbol_class)
+            if symbol_class or key == "Relief Valves":  # Include Relief Valves
+                self.create_component(key, x_positions[key], y_positions[key], symbol_class)
 
-        # Define flow connections
-        connections = [
-            ("Wellhead", "Steam Separator", "mixture", [(0.5, 0), (0.5, 1)]),
-            ("Steam Separator", "Relief Valves", "steam", [(1, 0.3), (0, 0.5)]),
-            ("Steam Separator", "Moisture Sep", "steam", [(1, 0.7), (0, 0.5)]),
-            ("Moisture Sep", "Turbine", "steam", [(1, 0.5), (0, 0.5)]),
-            ("Turbine", "Condenser", "mixture", [(1, 0.5), (0, 0.5)]),
-            ("Condenser", "Cooling Tower", "water", [(1, 0.5), (0, 0.5)])
-        ]
+        # Create flow connections
+        # Wellhead to Steam Separator
+        self.create_flow_connection(
+            self.symbols["Wellhead"],
+            self.symbols["Steam Separator"],
+            "mixture",
+            [(0.5, 1.0), (0.5, 0.0)]
+        )
 
-        # Create connections
-        for from_comp, to_comp, flow_type, points in connections:
-            self.create_flow_connection(
-                self.symbols[from_comp],
-                self.symbols[to_comp],
-                flow_type,
-                points
-            )
+        # Steam Separator to Relief Valves
+        self.create_flow_connection(
+            self.symbols["Steam Separator"],
+            self.symbols["Relief Valves"],
+            "steam",
+            [(1.0, 0.5), (0.0, 0.5)]
+        )
+
+        # Steam Separator to Moisture Sep
+        self.create_flow_connection(
+            self.symbols["Steam Separator"],
+            self.symbols["Moisture Sep"],
+            "steam",
+            [(1.0, 0.5), (0.0, 0.5)]
+        )
+
+        # Moisture Sep to Turbine
+        self.create_flow_connection(
+            self.symbols["Moisture Sep"],
+            self.symbols["Turbine"],
+            "steam",
+            [(1.0, 0.5), (0.0, 0.5)]
+        )
+
+        # Turbine to Condenser
+        self.create_flow_connection(
+            self.symbols["Turbine"],
+            self.symbols["Condenser"],
+            "mixture",
+            [(1.0, 0.5), (0.0, 0.5)]
+        )
+
+        # Condenser to Cooling Tower
+        self.create_flow_connection(
+            self.symbols["Condenser"],
+            self.symbols["Cooling Tower"],
+            "water",
+            [(0.5, 1.0), (0.5, 0.0)]
+        )
+
+        # Cooling Tower return to Condenser (on the left side)
+        self.create_flow_connection(
+            self.symbols["Cooling Tower"],
+            self.symbols["Condenser"],
+            "water",
+            [(0.2, 0.0), (0.2, 1.0)]
+        )
 
     def create_component(self, label, x, y, symbol_class=None):
         """Creates a component with custom symbol and value display."""
@@ -241,18 +290,22 @@ class FlowDiagramWidget(QGraphicsView):
         if symbol_class:
             container = symbol_class.create_symbol(self._scene, x, y, width, height)
         else:
-            container = QGraphicsRectItem(x, y, width, height)
+            container = QGraphicsRectItem()
+            container.setRect(0, 0, width, height)
+            container.setPos(x, y)
             container.setBrush(QBrush(QColor("#404040")))
             container.setPen(QPen(Qt.white, 2))
             self._scene.addItem(container)
         
-        # Store the container, not just the symbol
+        # Store the container reference
         self.symbols[label] = container
 
         # Create label container
-        label_container = QGraphicsRectItem(x, y - 30, width, height + 40)
-        label_container.setBrush(QBrush(QColor(0, 0, 0, 0)))
-        label_container.setPen(QPen(QColor(0, 0, 0, 0)))
+        label_container = QGraphicsRectItem()
+        label_container.setRect(0, -30, width, height + 40)
+        label_container.setPos(x, y)
+        label_container.setBrush(QBrush(Qt.transparent))
+        label_container.setPen(QPen(Qt.transparent))
         self._scene.addItem(label_container)
 
         # Add component label
@@ -263,7 +316,7 @@ class FlowDiagramWidget(QGraphicsView):
         
         # Center the text
         text_width = text_item.boundingRect().width()
-        text_item.setPos(x + (width - text_width)/2, y - 25)
+        text_item.setPos((width - text_width)/2, -25)
         text_item.setParentItem(label_container)
 
         # Add value display
@@ -271,7 +324,7 @@ class FlowDiagramWidget(QGraphicsView):
         value_text.setPlainText("--")
         value_text.setDefaultTextColor(QColor("#00FF00"))
         value_text.setFont(QFont("Consolas", 10))
-        value_text.setPos(x + 5, y + height + 5)
+        value_text.setPos(5, height + 5)
         value_text.setParentItem(label_container)
 
         # Store references
@@ -286,20 +339,19 @@ class FlowDiagramWidget(QGraphicsView):
 
     def create_flow_connection(self, from_item, to_item, flow_type, points):
         """Creates a flow connection with arrows and color coding."""
-        # Get the bounding rectangles for positioning
-        from_rect = from_item.boundingRect()
-        to_rect = to_item.boundingRect()
-        
-        # Get scene positions
+        # Get the bounding rectangles and scene positions
+        from_bounds = from_item.boundingRect()
+        to_bounds = to_item.boundingRect()
         from_pos = from_item.scenePos()
         to_pos = to_item.scenePos()
 
         # Calculate start and end points using relative positions
-        start_x = from_pos.x() + from_rect.width() * points[0][0]
-        start_y = from_pos.y() + from_rect.height() * points[0][1]
-        end_x = to_pos.x() + to_rect.width() * points[1][0]
-        end_y = to_pos.y() + to_rect.height() * points[1][1]
+        start_x = from_pos.x() + from_bounds.width() * points[0][0]
+        start_y = from_pos.y() + from_bounds.height() * points[0][1]
+        end_x = to_pos.x() + to_bounds.width() * points[1][0]
+        end_y = to_pos.y() + to_bounds.height() * points[1][1]
 
+        # Create the connection
         start = QPointF(start_x, start_y)
         end = QPointF(end_x, end_y)
 
@@ -361,4 +413,5 @@ class FlowDiagramWidget(QGraphicsView):
     def resizeEvent(self, event):
         """Handle resize events to maintain the view."""
         super().resizeEvent(event)
-        self.fitInView(self._scene.sceneRect(), Qt.KeepAspectRatio)
+        # Update the view to show all items with margin
+        self.fitInView(self._scene.sceneRect().adjusted(-50, -50, 50, 50), Qt.KeepAspectRatio)
