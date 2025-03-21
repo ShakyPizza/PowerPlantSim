@@ -1,11 +1,11 @@
-import { IAPWS97 } from 'neutriumjs.thermo.iapws97';
+import { IAPWS97 } from "./mock-iapws97";  // Using mock implementation for development
 
 export class SteamProperties {
     private static instance: SteamProperties;
-    private iapws97: IAPWS97;
+    private steam: IAPWS97;
 
     private constructor() {
-        this.iapws97 = new IAPWS97();
+        this.steam = new IAPWS97();
     }
 
     public static getInstance(): SteamProperties {
@@ -22,12 +22,12 @@ export class SteamProperties {
      * @returns Steam properties object
      */
     public getPropertiesPT(pressure: number, temperature: number) {
-        // Convert pressure from bar to MPa
-        const pressureMPa = pressure / 10;
-        // Convert temperature from °C to K
-        const temperatureK = temperature + 273.15;
-
-        return this.iapws97.setPT(pressureMPa, temperatureK);
+        return {
+            h: this.steam.h_pt(pressure, temperature),
+            s: this.steam.s_pt(pressure, temperature),
+            v: this.steam.v_pt(pressure, temperature),
+            x: this.steam.x_pt(pressure, temperature)
+        };
     }
 
     /**
@@ -37,10 +37,13 @@ export class SteamProperties {
      * @returns Steam properties object
      */
     public getPropertiesPX(pressure: number, quality: number) {
-        // Convert pressure from bar to MPa
-        const pressureMPa = pressure / 10;
-
-        return this.iapws97.setPX(pressureMPa, quality);
+        const temp = this.steam.t_sat_p(pressure);
+        return {
+            h: this.steam.h_pt(pressure, temp),
+            s: this.steam.s_pt(pressure, temp),
+            v: this.steam.v_pt(pressure, temp),
+            x: quality
+        };
     }
 
     /**
@@ -49,9 +52,7 @@ export class SteamProperties {
      * @returns Temperature in °C
      */
     public getSaturatedTemperature(pressure: number): number {
-        const pressureMPa = pressure / 10;
-        const properties = this.iapws97.setPX(pressureMPa, 1.0);
-        return properties.t - 273.15; // Convert K to °C
+        return this.steam.t_sat_p(pressure);
     }
 
     /**
@@ -60,9 +61,7 @@ export class SteamProperties {
      * @returns Pressure in bar (absolute)
      */
     public getSaturatedPressure(temperature: number): number {
-        const temperatureK = temperature + 273.15;
-        const properties = this.iapws97.setTX(temperatureK, 1.0);
-        return properties.p * 10; // Convert MPa to bar
+        return this.steam.p_sat_t(temperature);
     }
 
     /**
@@ -72,10 +71,7 @@ export class SteamProperties {
      * @returns Steam quality (0-1)
      */
     public getSteamQuality(pressure: number, temperature: number): number {
-        const pressureMPa = pressure / 10;
-        const temperatureK = temperature + 273.15;
-        const properties = this.iapws97.setPT(pressureMPa, temperatureK);
-        return properties.x;
+        return this.steam.x_pt(pressure, temperature);
     }
 
     /**
@@ -85,10 +81,7 @@ export class SteamProperties {
      * @returns Specific enthalpy in kJ/kg
      */
     public getEnthalpy(pressure: number, temperature: number): number {
-        const pressureMPa = pressure / 10;
-        const temperatureK = temperature + 273.15;
-        const properties = this.iapws97.setPT(pressureMPa, temperatureK);
-        return properties.h;
+        return this.steam.h_pt(pressure, temperature);
     }
 
     /**
@@ -98,10 +91,7 @@ export class SteamProperties {
      * @returns Specific entropy in kJ/kg·K
      */
     public getEntropy(pressure: number, temperature: number): number {
-        const pressureMPa = pressure / 10;
-        const temperatureK = temperature + 273.15;
-        const properties = this.iapws97.setPT(pressureMPa, temperatureK);
-        return properties.s;
+        return this.steam.s_pt(pressure, temperature);
     }
 
     /**
@@ -111,10 +101,7 @@ export class SteamProperties {
      * @returns Specific volume in m³/kg
      */
     public getSpecificVolume(pressure: number, temperature: number): number {
-        const pressureMPa = pressure / 10;
-        const temperatureK = temperature + 273.15;
-        const properties = this.iapws97.setPT(pressureMPa, temperatureK);
-        return properties.v;
+        return this.steam.v_pt(pressure, temperature);
     }
 
     /**
@@ -129,33 +116,16 @@ export class SteamProperties {
         inletTemp: number,
         outletPressure: number
     ): number {
-        const inletEnthalpy = this.getEnthalpy(inletPressure, inletTemp);
+        // Get inlet entropy
         const inletEntropy = this.getEntropy(inletPressure, inletTemp);
         
-        // Find outlet temperature that gives same entropy at outlet pressure
-        let outletTemp = this.getSaturatedTemperature(outletPressure);
-        let outletEntropy = this.getEntropy(outletPressure, outletTemp);
+        // Get outlet enthalpy at same entropy (isentropic)
+        const outletEnthalpy = this.steam.h_ps(outletPressure, inletEntropy);
         
-        // Binary search to find temperature that gives same entropy
-        let lowTemp = this.getSaturatedTemperature(outletPressure);
-        let highTemp = inletTemp;
-        let tolerance = 0.0001;
-        let maxIterations = 100;
-        let iterations = 0;
-
-        while (Math.abs(outletEntropy - inletEntropy) > tolerance && iterations < maxIterations) {
-            if (outletEntropy < inletEntropy) {
-                lowTemp = outletTemp;
-                outletTemp = (outletTemp + highTemp) / 2;
-            } else {
-                highTemp = outletTemp;
-                outletTemp = (outletTemp + lowTemp) / 2;
-            }
-            outletEntropy = this.getEntropy(outletPressure, outletTemp);
-            iterations++;
-        }
-
-        const outletEnthalpy = this.getEnthalpy(outletPressure, outletTemp);
+        // Get inlet enthalpy
+        const inletEnthalpy = this.getEnthalpy(inletPressure, inletTemp);
+        
+        // Return enthalpy drop
         return inletEnthalpy - outletEnthalpy;
     }
 } 

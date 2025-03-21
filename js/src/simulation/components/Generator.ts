@@ -1,6 +1,6 @@
 import { BaseComponent } from './BaseComponent';
 
-interface GeneratorResult {
+interface GeneratorResult extends Record<string, number> {
     electrical_power: number;  // MW
     efficiency: number;        // %
     voltage: number;          // kV
