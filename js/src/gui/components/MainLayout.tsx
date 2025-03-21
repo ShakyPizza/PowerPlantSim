@@ -1,5 +1,5 @@
 import React from 'react';
-import { SimulationState } from '../../simulation/types';
+import { SimulationState } from '../../simulation/SimulationState';
 import { ControlPanel } from './ControlPanel';
 import { FlowDiagram } from './FlowDiagram';
 import { PowerPlot } from './PowerPlot';

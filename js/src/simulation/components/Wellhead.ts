@@ -1,5 +1,10 @@
 import { BaseComponent } from './BaseComponent';
-import { WellheadOutput } from '../types';
+
+export interface WellheadOutput extends Record<string, number> {
+    pressure: number;    // barG
+    temperature: number; // °C
+    flow: number;       // kg/s
+}
 
 export class Wellhead extends BaseComponent<WellheadOutput> {
     constructor() {

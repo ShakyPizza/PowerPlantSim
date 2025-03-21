@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MainLayout } from './components/MainLayout';
 import { SimulationEngine } from '../simulation/SimulationEngine';
-import { SimulationState } from '../simulation/types';
+import { SimulationState } from '../simulation/SimulationState';
 
 export const App: React.FC = () => {
     const [engine] = useState(() => new SimulationEngine());

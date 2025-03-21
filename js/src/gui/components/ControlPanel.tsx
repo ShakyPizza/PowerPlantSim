@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SimulationState } from '../../simulation/types';
+import { SimulationState } from '../../simulation/SimulationState';
 
 interface ControlPanelProps {
     onStartStop: () => void;
