@@ -108,6 +108,28 @@ export class SimulationEngine {
         return { ...this.state };
     }
 
+    reset(): void {
+        // Reset to initial conditions
+        this.state = {
+            wellhead_pressure: 10.5,   // barG
+            wellhead_temp: 178,        // °C
+            wellhead_flow: 85,         // kg/s
+            separator_outlet_pressure: null,
+            separator_outlet_steam_flow: null,
+            separator_outlet_steam_temp: null,
+            waste_water_flow: null,
+            turbine_out_power: 0.0,
+            electrical_power: 0.0,
+            steam_flow: null,
+            condenser_pressure: 0.06,
+            condenser_temp: 35,
+        };
+    }
+
+    setState(key: keyof SimulationState, value: number): void {
+        this.state[key] = value;
+    }
+
     // Methods to update component parameters
     setWellheadPressure(pressure: number): void {
         this.wellhead.setPressure(pressure);
