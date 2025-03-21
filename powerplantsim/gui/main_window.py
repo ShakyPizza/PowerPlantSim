@@ -284,6 +284,30 @@ class MainWindow(QMainWindow):
         }
         return units.get(label, "")
 
+    def update_simulation_values(self):
+        """Get values from sliders and update the GUI"""
+        new_data = {
+            "Wellhead": f"{self.sliders['Wellhead Flow'].value() / 10:.1f} kg/s",
+            "Wellhead Temp": f"{self.sliders['Wellhead Temperature'].value() / 10:.1f} °C",
+            "Steam Separator": f"{random.uniform(85, 100):.1f} kg/s",
+            "Moisture Sep": f"{random.uniform(80, 95):.1f} kg/s",
+            "Relief Valves": f"{random.uniform(0,15):.1f} %",
+            "Turbine": f"{random.uniform(5, 20):.1f} MW",
+            "Condenser": f"{random.uniform(30, 40):.1f} °C",
+            "Cooling Tower": f"{random.uniform(25, 35):.1f} °C"
+        }
+
+        # Update flow diagram
+        self.flow_diagram.update_values(new_data)
+
+        # Update plot (for example, tracking turbine power output)
+        self.plot_widget.update_plot(float(new_data["Turbine"].split()[0]))
+
+    def slider_changed(self, label):
+        """Updates label text when a slider is moved"""
+        value = self.sliders[label].value() / 10  # Convert back to decimal
+        self.labels[label].setText(f"{label}: {value} {self.get_unit(label)}")
+
 def main():
     app = QApplication(sys.argv)
     
