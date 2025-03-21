@@ -17,7 +17,7 @@ export interface Component<T extends Record<string, number> = Record<string, num
     process(inputs: Record<string, number>): T;
 }
 
-export interface WellheadOutput {
+export interface WellheadOutput extends Record<string, number> {
     pressure: number;    // barG
     temperature: number; // °C
     flow: number;       // kg/s

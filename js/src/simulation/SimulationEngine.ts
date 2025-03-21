@@ -45,7 +45,7 @@ export class SimulationEngine {
 
     stepSimulation(): SimulationState {
         // 1. Get wellhead conditions
-        const wellheadOutput = this.wellhead.process({});
+        const wellheadOutput = this.wellhead.process();
         this.state.wellhead_pressure = wellheadOutput.pressure;
         this.state.wellhead_temp = wellheadOutput.temperature;
         this.state.wellhead_flow = wellheadOutput.flow;

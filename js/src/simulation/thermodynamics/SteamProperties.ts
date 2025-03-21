@@ -139,8 +139,8 @@ export class SteamProperties {
         // Binary search to find temperature that gives same entropy
         let lowTemp = this.getSaturatedTemperature(outletPressure);
         let highTemp = inletTemp;
-        let tolerance = 0.0001;
-        let maxIterations = 100;
+        const tolerance = 0.0001;
+        const maxIterations = 100;
         let iterations = 0;
 
         while (Math.abs(outletEntropy - inletEntropy) > tolerance && iterations < maxIterations) {

@@ -10,7 +10,7 @@ export class Wellhead extends BaseComponent {
         this.setState('flow', 85);          // kg/s
     }
 
-    process(inputs: Record<string, number>): WellheadOutput {
+    process(): WellheadOutput {
         // In a real implementation, this would calculate values based on inputs
         // For now, we'll return the current state
         return {

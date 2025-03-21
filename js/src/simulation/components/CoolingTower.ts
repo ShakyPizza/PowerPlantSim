@@ -1,6 +1,6 @@
 import { BaseComponent } from './BaseComponent';
 
-interface CoolingTowerResult {
+interface CoolingTowerResult extends Record<string, number> {
     outlet_temp: number;      // °C
     water_loss: number;       // kg/s
     cooling_capacity: number; // MW
