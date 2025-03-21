@@ -1,4 +1,4 @@
-import { SimulationState } from './types';
+import { SimulationState } from './SimulationState';
 import { Wellhead } from './components/Wellhead';
 import { SteamSeparator } from './components/SteamSeparator';
 import { MoistureSeparator } from './components/MoistureSeparator';
@@ -7,6 +7,10 @@ import { Condenser } from './components/Condenser';
 import { Generator } from './components/Generator';
 import { CoolingTower } from './components/CoolingTower';
 
+/**
+ * Main simulation engine that coordinates all power plant components.
+ * Manages the flow of steam and calculations through the entire system.
+ */
 export class SimulationEngine {
     private wellhead: Wellhead;
     private steamSeparator: SteamSeparator;
@@ -17,6 +21,10 @@ export class SimulationEngine {
     private coolingTower: CoolingTower;
     private state: SimulationState;
 
+    /**
+     * Create a new simulation engine with all components initialized.
+     * Sets up initial conditions for the simulation.
+     */
     constructor() {
         this.wellhead = new Wellhead();
         this.steamSeparator = new SteamSeparator();
@@ -43,6 +51,11 @@ export class SimulationEngine {
         };
     }
 
+    /**
+     * Advance the simulation by one step.
+     * Processes all components in sequence and updates the simulation state.
+     * @returns The updated simulation state
+     */
     stepSimulation(): SimulationState {
         // 1. Get wellhead conditions
         const wellheadOutput = this.wellhead.process();
@@ -104,10 +117,17 @@ export class SimulationEngine {
         return this.state;
     }
 
+    /**
+     * Get the current simulation state.
+     * @returns A copy of the current simulation state
+     */
     getState(): SimulationState {
         return { ...this.state };
     }
 
+    /**
+     * Reset the simulation to initial conditions.
+     */
     reset(): void {
         // Reset to initial conditions
         this.state = {
@@ -126,104 +146,83 @@ export class SimulationEngine {
         };
     }
 
+    /**
+     * Set a specific state value.
+     * @param key - The state parameter to update
+     * @param value - The new value to set
+     */
     setState(key: keyof SimulationState, value: number): void {
         this.state[key] = value;
     }
 
-    update(deltaTime: number): void {
-        // Process flow in sequence
-        const wellhead = new Wellhead();
-        const separator = new SteamSeparator();
-        const moistureSeparator = new MoistureSeparator();
-        const turbine = new SteamTurbine();
-        const generator = new Generator();
-        const condenser = new Condenser();
-        const coolingTower = new CoolingTower();
-
-        // Process flow in sequence
-        const wellheadResult = wellhead.process({
-            pressure: this.state.wellhead_pressure,
-            temperature: this.state.wellhead_temp,
-            flow: this.state.wellhead_flow
-        });
-
-        const separatorResult = separator.process({
-            separator_inlet_pressure: wellheadResult.pressure,
-            separator_inlet_temp: wellheadResult.temperature,
-            separator_inlet_flow: wellheadResult.flow
-        });
-
-        const moistureResult = moistureSeparator.process({
-            separator_inlet_pressure: separatorResult.separator_outlet_pressure,
-            separator_inlet_temp: separatorResult.separator_outlet_steam_temp,
-            separator_inlet_flow: separatorResult.separator_outlet_steam_flow
-        });
-
-        const turbineResult = turbine.process({
-            turbine_inlet_pressure: moistureResult.separator_outlet_pressure,
-            turbine_inlet_temp: moistureResult.separator_outlet_steam_temp,
-            turbine_inlet_steam_flow: moistureResult.separator_outlet_steam_flow,
-            turbine_outlet_pressure: this.state.condenser_pressure
-        });
-
-        const condenserResult = condenser.process({
-            inlet_flow: turbineResult.steam_flow_out,
-            inlet_temp: turbineResult.exhaust_temperature,
-            inlet_pressure: turbineResult.exhaust_pressure
-        });
-
-        // Process cooling tower with current condenser temperature
-        const coolingResult = coolingTower.process({
-            inlet_temp: condenserResult.temperature,
-            water_flow: 1000 // Default cooling water flow
-        });
-
-        // Update condenser temperature based on cooling tower output
-        this.state.condenser_temp = coolingResult.outlet_temp;
-        this.state.condenser_pressure = condenserResult.pressure;
-
-        const generatorResult = generator.process({
-            mechanical_power: turbineResult.mechanical_power
-        });
-
-        // Update other state values
-        this.state.turbine_out_power = turbineResult.mechanical_power;
-        this.state.electrical_power = generatorResult.electrical_power;
-    }
-
-    // Methods to update component parameters
+    /**
+     * Set the wellhead pressure.
+     * @param pressure - Pressure in barG
+     */
     setWellheadPressure(pressure: number): void {
         this.wellhead.setPressure(pressure);
     }
 
+    /**
+     * Set the wellhead temperature.
+     * @param temperature - Temperature in °C
+     */
     setWellheadTemperature(temperature: number): void {
         this.wellhead.setTemperature(temperature);
     }
 
+    /**
+     * Set the wellhead flow rate.
+     * @param flow - Flow rate in kg/s
+     */
     setWellheadFlow(flow: number): void {
         this.wellhead.setFlow(flow);
     }
 
+    /**
+     * Set the steam separator efficiency.
+     * @param efficiency - Efficiency value between 0 and 1
+     */
     setSeparatorEfficiency(efficiency: number): void {
         this.steamSeparator.setEfficiency(efficiency);
     }
 
+    /**
+     * Set the moisture separator efficiency.
+     * @param efficiency - Efficiency value between 0 and 1
+     */
     setMoistureSeparatorEfficiency(efficiency: number): void {
         this.moistureSeparator.setEfficiency(efficiency);
     }
 
+    /**
+     * Set the turbine efficiency.
+     * @param efficiency - Efficiency value between 0 and 1
+     */
     setTurbineEfficiency(efficiency: number): void {
         this.turbine.setEfficiency(efficiency);
     }
 
+    /**
+     * Set the condenser efficiency.
+     * @param efficiency - Efficiency value between 0 and 1
+     */
     setCondenserEfficiency(efficiency: number): void {
         this.condenser.setEfficiency(efficiency);
     }
 
+    /**
+     * Set the generator efficiency.
+     * @param efficiency - Efficiency value between 0 and 1
+     */
     setGeneratorEfficiency(efficiency: number): void {
         this.generator.setEfficiency(efficiency);
     }
 
+    /**
+     * Set the cooling tower efficiency.
+     * @param efficiency - Efficiency value between 0 and 1
+     */
     setCoolingTowerEfficiency(efficiency: number): void {
         this.coolingTower.setEfficiency(efficiency);
     }
