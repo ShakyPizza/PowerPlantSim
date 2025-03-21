@@ -131,10 +131,6 @@ export class SimulationEngine {
     }
 
     update(deltaTime: number): void {
-        // Time-based updates (e.g., for dynamic components)
-        this.state.condenser_temp += (35 - this.state.condenser_temp) * deltaTime * 0.1;
-        this.state.condenser_pressure += (0.06 - this.state.condenser_pressure) * deltaTime * 0.1;
-
         // Process flow in sequence
         const wellhead = new Wellhead();
         const separator = new SteamSeparator();
@@ -142,6 +138,7 @@ export class SimulationEngine {
         const turbine = new SteamTurbine();
         const generator = new Generator();
         const condenser = new Condenser();
+        const coolingTower = new CoolingTower();
 
         // Process flow in sequence
         const wellheadResult = wellhead.process({
@@ -169,26 +166,29 @@ export class SimulationEngine {
             turbine_outlet_pressure: this.state.condenser_pressure
         });
 
+        const condenserResult = condenser.process({
+            inlet_flow: turbineResult.steam_flow_out,
+            inlet_temp: turbineResult.exhaust_temperature,
+            inlet_pressure: turbineResult.exhaust_pressure
+        });
+
+        // Process cooling tower with current condenser temperature
+        const coolingResult = coolingTower.process({
+            inlet_temp: condenserResult.temperature,
+            water_flow: 1000 // Default cooling water flow
+        });
+
+        // Update condenser temperature based on cooling tower output
+        this.state.condenser_temp = coolingResult.outlet_temp;
+        this.state.condenser_pressure = condenserResult.pressure;
+
         const generatorResult = generator.process({
             mechanical_power: turbineResult.mechanical_power
         });
 
-        const condenserResult = condenser.process({
-            inlet_pressure: turbineResult.exhaust_pressure,
-            inlet_temperature: turbineResult.exhaust_temperature,
-            inlet_flow: turbineResult.steam_flow_out
-        });
-
-        // Update state with results
-        this.state = {
-            ...this.state,
-            ...wellheadResult,
-            ...separatorResult,
-            ...moistureResult,
-            ...turbineResult,
-            ...generatorResult,
-            ...condenserResult
-        };
+        // Update other state values
+        this.state.turbine_out_power = turbineResult.mechanical_power;
+        this.state.electrical_power = generatorResult.electrical_power;
     }
 
     // Methods to update component parameters

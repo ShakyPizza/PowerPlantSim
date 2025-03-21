@@ -30,31 +30,39 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
     onCoolingTowerFanSpeedChange
 }) => {
     return (
-        <div className="flex h-screen bg-gray-900">
-            {/* Left panel - Flow Diagram and Power Plot (60%) */}
-            <div className="w-3/5 h-full flex flex-col">
-                <div className="flex-1 bg-gray-800">
-                    <FlowDiagram state={state} />
-                </div>
-                <div className="h-48 bg-gray-800 p-4">
-                    <PowerPlot state={state} />
-                </div>
+        <div className="w-full h-full flex flex-col">
+            {/* Header */}
+            <div className="bg-gray-900 text-white p-4">
+                <h1 className="text-2xl font-bold">Geothermal Power Plant Simulator</h1>
             </div>
 
-            {/* Right panel - Controls (40%) */}
-            <div className="w-2/5 h-full">
-                <ControlPanel
-                    state={state}
-                    isRunning={isRunning}
-                    onStartStop={onStartStop}
-                    onReset={onReset}
-                    onSpeedChange={onSpeedChange}
-                    onWellheadPressureChange={onWellheadPressureChange}
-                    onWellheadTemperatureChange={onWellheadTemperatureChange}
-                    onWellheadFlowChange={onWellheadFlowChange}
-                    onTurbineLoadChange={onTurbineLoadChange}
-                    onCoolingTowerFanSpeedChange={onCoolingTowerFanSpeedChange}
-                />
+            {/* Main Content */}
+            <div className="flex-1 flex overflow-hidden">
+                {/* Left side - Flow Diagram and Power Plot */}
+                <div className="flex-1 flex flex-col p-4 overflow-hidden">
+                    <div className="flex-1 mb-4 overflow-hidden">
+                        <FlowDiagram state={state} />
+                    </div>
+                    <div className="h-1/3 overflow-hidden">
+                        <PowerPlot state={state} />
+                    </div>
+                </div>
+
+                {/* Right side - Control Panel */}
+                <div className="w-1/4 h-full border-l border-gray-700">
+                    <ControlPanel
+                        state={state}
+                        isRunning={isRunning}
+                        onStartStop={onStartStop}
+                        onReset={onReset}
+                        onSpeedChange={onSpeedChange}
+                        onWellheadPressureChange={onWellheadPressureChange}
+                        onWellheadTemperatureChange={onWellheadTemperatureChange}
+                        onWellheadFlowChange={onWellheadFlowChange}
+                        onTurbineLoadChange={onTurbineLoadChange}
+                        onCoolingTowerFanSpeedChange={onCoolingTowerFanSpeedChange}
+                    />
+                </div>
             </div>
         </div>
     );

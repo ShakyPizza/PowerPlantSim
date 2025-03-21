@@ -27,11 +27,25 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     isRunning
 }) => {
     const [simulationSpeed, setSimulationSpeed] = useState(10);
+    const [fanSpeed, setFanSpeed] = useState(70); // Default fan speed at 70%
+    const [turbineLoad, setTurbineLoad] = useState(80); // Default turbine load at 80%
 
     const handleSpeedChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const speed = parseInt(event.target.value);
         setSimulationSpeed(speed);
         onSpeedChange(speed);
+    };
+
+    const handleFanSpeedChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const speed = parseFloat(event.target.value);
+        setFanSpeed(speed);
+        onCoolingTowerFanSpeedChange(speed);
+    };
+
+    const handleTurbineLoadChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const load = parseFloat(event.target.value);
+        setTurbineLoad(load);
+        onTurbineLoadChange(load);
     };
 
     return (
@@ -116,11 +130,11 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                             min="0"
                             max="100"
                             step="0.1"
-                            value={(state.turbine_out_power / 50) * 100}
-                            onChange={(e) => onTurbineLoadChange(parseFloat(e.target.value))}
+                            value={turbineLoad}
+                            onChange={handleTurbineLoadChange}
                             className="w-full"
                         />
-                        <span className="ml-2">{((state.turbine_out_power / 50) * 100).toFixed(1)}</span>
+                        <span className="ml-2">{turbineLoad.toFixed(1)}</span>
                     </div>
                     <div>
                         <label className="block mb-2">Cooling Tower Fan Speed (%)</label>
@@ -129,11 +143,11 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                             min="0"
                             max="100"
                             step="0.1"
-                            value={100 - ((state.condenser_temp - 35) / 10 * 100)}
-                            onChange={(e) => onCoolingTowerFanSpeedChange(parseFloat(e.target.value))}
+                            value={fanSpeed}
+                            onChange={handleFanSpeedChange}
                             className="w-full"
                         />
-                        <span className="ml-2">{(100 - ((state.condenser_temp - 35) / 10 * 100)).toFixed(1)}</span>
+                        <span className="ml-2">{fanSpeed.toFixed(1)}</span>
                     </div>
                 </div>
             </div>
