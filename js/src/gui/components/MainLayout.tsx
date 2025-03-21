@@ -1,6 +1,8 @@
 import React from 'react';
 import { SimulationState } from '../../simulation/types';
 import { ControlPanel } from './ControlPanel';
+import { FlowDiagram } from './FlowDiagram';
+import { PowerPlot } from './PowerPlot';
 
 interface MainLayoutProps {
     state: SimulationState;
@@ -29,11 +31,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
 }) => {
     return (
         <div className="flex h-screen bg-gray-900">
-            {/* Left panel - Flow Diagram (60%) */}
-            <div className="w-3/5 h-full bg-gray-800">
-                {/* Flow diagram will go here */}
-                <div className="w-full h-full flex items-center justify-center text-white">
-                    Flow Diagram Coming Soon
+            {/* Left panel - Flow Diagram and Power Plot (60%) */}
+            <div className="w-3/5 h-full flex flex-col">
+                <div className="flex-1 bg-gray-800">
+                    <FlowDiagram state={state} />
+                </div>
+                <div className="h-48 bg-gray-800 p-4">
+                    <PowerPlot state={state} />
                 </div>
             </div>
 
