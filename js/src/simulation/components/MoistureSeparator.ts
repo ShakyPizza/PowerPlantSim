@@ -1,9 +1,13 @@
 import { BaseComponent } from './BaseComponent';
 import { SeparatorResult } from '../types';
+import { SteamProperties } from '../thermodynamics/SteamProperties';
 
 export class MoistureSeparator extends BaseComponent<SeparatorResult> {
+    private steamProps: SteamProperties;
+
     constructor() {
         super('MoistureSeparator');
+        this.steamProps = SteamProperties.getInstance();
         // Initialize with default values
         this.setState('efficiency', 0.99);  // 99% moisture removal efficiency
         this.setState('pressure_drop', 0.02); // 2% pressure drop
@@ -16,8 +20,12 @@ export class MoistureSeparator extends BaseComponent<SeparatorResult> {
             separator_inlet_flow
         } = inputs;
 
-        // Calculate moisture content (simplified)
-        const moistureContent = this.calculateMoistureContent(separator_inlet_pressure, separator_inlet_temp);
+        // Calculate moisture content using steam tables
+        const steamQuality = this.steamProps.getSteamQuality(
+            separator_inlet_pressure,
+            separator_inlet_temp
+        );
+        const moistureContent = 1 - steamQuality;
         
         // Calculate moisture removal
         const moistureRemoval = moistureContent * this.getState('efficiency');
@@ -26,8 +34,8 @@ export class MoistureSeparator extends BaseComponent<SeparatorResult> {
         // Calculate pressure drop
         const outletPressure = separator_inlet_pressure * (1 - this.getState('pressure_drop'));
         
-        // Calculate outlet temperature (simplified)
-        const outletTemp = this.calculateSaturatedSteamTemp(outletPressure);
+        // Calculate outlet temperature using steam tables
+        const outletTemp = this.steamProps.getSaturatedTemperature(outletPressure);
 
         return {
             separator_outlet_pressure: outletPressure,
@@ -35,20 +43,6 @@ export class MoistureSeparator extends BaseComponent<SeparatorResult> {
             separator_outlet_steam_temp: outletTemp,
             waste_water_flow: separator_inlet_flow - drySteamFlow
         };
-    }
-
-    private calculateMoistureContent(pressure: number, temperature: number): number {
-        // Simplified moisture content calculation
-        // In reality, this would use steam tables and thermodynamic properties
-        const saturationTemp = this.calculateSaturatedSteamTemp(pressure);
-        const superheat = temperature - saturationTemp;
-        return Math.max(0, 0.1 - superheat / 100); // 10% moisture at saturation, decreasing with superheat
-    }
-
-    private calculateSaturatedSteamTemp(pressure: number): number {
-        // Simplified saturated steam temperature calculation
-        // In reality, this would use steam tables
-        return 100 + (pressure - 1) * 20; // Rough approximation
     }
 
     setEfficiency(efficiency: number): void {

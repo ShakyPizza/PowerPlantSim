@@ -23,21 +23,21 @@ export interface WellheadOutput {
     flow: number;       // kg/s
 }
 
-export interface SeparatorResult {
+export interface SeparatorResult extends Record<string, number> {
     separator_outlet_pressure: number;
     separator_outlet_steam_flow: number;
     separator_outlet_steam_temp: number;
     waste_water_flow: number;
 }
 
-export interface TurbineResult {
+export interface TurbineResult extends Record<string, number> {
     mechanical_power: number;  // MW
     steam_flow_out: number;    // kg/s
     exhaust_pressure: number;  // bar
     exhaust_temperature: number; // °C
 }
 
-export interface CondenserResult {
+export interface CondenserResult extends Record<string, number> {
     pressure: number;      // bar
     temperature: number;   // °C
     cooling_capacity: number; // MW

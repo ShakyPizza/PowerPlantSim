@@ -1,9 +1,13 @@
 import { BaseComponent } from './BaseComponent';
 import { TurbineResult } from '../types';
+import { SteamProperties } from '../thermodynamics/SteamProperties';
 
 export class SteamTurbine extends BaseComponent<TurbineResult> {
+    private steamProps: SteamProperties;
+
     constructor() {
         super('SteamTurbine');
+        this.steamProps = SteamProperties.getInstance();
         // Initialize with default values
         this.setState('efficiency', 0.85);     // 85% isentropic efficiency
         this.setState('mechanical_efficiency', 0.98); // 98% mechanical efficiency
@@ -18,22 +22,22 @@ export class SteamTurbine extends BaseComponent<TurbineResult> {
             turbine_outlet_pressure
         } = inputs;
 
-        // Calculate isentropic enthalpy drop (simplified)
-        const enthalpyDrop = this.calculateEnthalpyDrop(
+        // Calculate isentropic enthalpy drop using steam tables
+        const isentropicEnthalpyDrop = this.steamProps.calculateIsentropicEnthalpyDrop(
             turbine_inlet_pressure,
             turbine_inlet_temp,
             turbine_outlet_pressure
         );
 
         // Calculate actual enthalpy drop considering efficiency
-        const actualEnthalpyDrop = enthalpyDrop * this.getState('efficiency');
+        const actualEnthalpyDrop = isentropicEnthalpyDrop * this.getState('efficiency');
 
         // Calculate mechanical power output (MW)
         const mechanicalPower = (actualEnthalpyDrop * turbine_inlet_steam_flow * this.getState('mechanical_efficiency')) / 1000;
 
-        // Calculate exhaust conditions
+        // Calculate exhaust conditions using steam tables
         const exhaustPressure = turbine_outlet_pressure;
-        const exhaustTemp = this.calculateSaturatedSteamTemp(exhaustPressure);
+        const exhaustTemp = this.steamProps.getSaturatedTemperature(exhaustPressure);
 
         return {
             mechanical_power: mechanicalPower,
@@ -41,26 +45,6 @@ export class SteamTurbine extends BaseComponent<TurbineResult> {
             exhaust_pressure: exhaustPressure,
             exhaust_temperature: exhaustTemp
         };
-    }
-
-    private calculateEnthalpyDrop(inletPressure: number, inletTemp: number, outletPressure: number): number {
-        // Simplified enthalpy drop calculation
-        // In reality, this would use steam tables and thermodynamic properties
-        const inletEnthalpy = this.calculateSteamEnthalpy(inletPressure, inletTemp);
-        const outletEnthalpy = this.calculateSteamEnthalpy(outletPressure, this.calculateSaturatedSteamTemp(outletPressure));
-        return inletEnthalpy - outletEnthalpy;
-    }
-
-    private calculateSteamEnthalpy(pressure: number, temperature: number): number {
-        // Simplified steam enthalpy calculation
-        // In reality, this would use steam tables
-        return temperature * 2.1 + pressure * 100; // Rough approximation
-    }
-
-    private calculateSaturatedSteamTemp(pressure: number): number {
-        // Simplified saturated steam temperature calculation
-        // In reality, this would use steam tables
-        return 100 + (pressure - 1) * 20; // Rough approximation
     }
 
     setEfficiency(efficiency: number): void {

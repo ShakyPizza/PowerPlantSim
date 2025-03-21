@@ -1,9 +1,13 @@
 import { BaseComponent } from './BaseComponent';
 import { CondenserResult } from '../types';
+import { SteamProperties } from '../thermodynamics/SteamProperties';
 
 export class Condenser extends BaseComponent<CondenserResult> {
+    private steamProps: SteamProperties;
+
     constructor() {
         super('Condenser');
+        this.steamProps = SteamProperties.getInstance();
         // Initialize with default values
         this.setState('efficiency', 0.95);     // 95% condensation efficiency
         this.setState('cooling_water_temp', 25); // °C
@@ -18,41 +22,23 @@ export class Condenser extends BaseComponent<CondenserResult> {
             inlet_pressure
         } = inputs;
 
-        // Calculate condensation heat transfer (simplified)
-        const heatTransfer = this.calculateHeatTransfer(
-            inlet_flow,
-            inlet_temp,
-            this.getState('cooling_water_temp')
-        );
+        // Calculate condensation heat transfer using steam tables
+        const inletEnthalpy = this.steamProps.getEnthalpy(inlet_pressure, inlet_temp);
+        const outletPressure = inlet_pressure * (1 - this.getState('pressure_drop'));
+        const outletTemp = this.steamProps.getSaturatedTemperature(outletPressure);
+        const outletEnthalpy = this.steamProps.getEnthalpy(outletPressure, outletTemp);
+
+        // Calculate heat transfer (enthalpy difference)
+        const heatTransfer = inlet_flow * (inletEnthalpy - outletEnthalpy);
 
         // Calculate actual heat transfer considering efficiency
         const actualHeatTransfer = heatTransfer * this.getState('efficiency');
-
-        // Calculate outlet pressure
-        const outletPressure = inlet_pressure * (1 - this.getState('pressure_drop'));
-
-        // Calculate outlet temperature (saturated water at outlet pressure)
-        const outletTemp = this.calculateSaturatedWaterTemp(outletPressure);
 
         return {
             pressure: outletPressure,
             temperature: outletTemp,
             cooling_capacity: actualHeatTransfer / 1000 // Convert to MW
         };
-    }
-
-    private calculateHeatTransfer(steamFlow: number, steamTemp: number, coolingWaterTemp: number): number {
-        // Simplified heat transfer calculation
-        // In reality, this would use heat transfer coefficients and detailed thermodynamics
-        const tempDiff = steamTemp - coolingWaterTemp;
-        const specificHeat = 4.2; // kJ/kg·K (water)
-        return steamFlow * specificHeat * tempDiff;
-    }
-
-    private calculateSaturatedWaterTemp(pressure: number): number {
-        // Simplified saturated water temperature calculation
-        // In reality, this would use steam tables
-        return 100 + (pressure - 1) * 20; // Rough approximation
     }
 
     setEfficiency(efficiency: number): void {
