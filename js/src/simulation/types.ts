@@ -6,8 +6,8 @@ export interface SimulationState {
     separator_outlet_steam_flow: number | null;
     separator_outlet_steam_temp: number | null;
     waste_water_flow: number | null;
-    turbine_out_power: number;     // MW
-    electrical_power: number;      // MW
+    turbine_out_power: number;     // MWm
+    electrical_power: number;      // MWe
     steam_flow: number | null;     // kg/s
     condenser_pressure: number;    // bar
     condenser_temp: number;        // °C

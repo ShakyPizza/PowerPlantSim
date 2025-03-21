@@ -130,6 +130,67 @@ export class SimulationEngine {
         this.state[key] = value;
     }
 
+    update(deltaTime: number): void {
+        // Time-based updates (e.g., for dynamic components)
+        this.state.condenser_temp += (35 - this.state.condenser_temp) * deltaTime * 0.1;
+        this.state.condenser_pressure += (0.06 - this.state.condenser_pressure) * deltaTime * 0.1;
+
+        // Process flow in sequence
+        const wellhead = new Wellhead();
+        const separator = new SteamSeparator();
+        const moistureSeparator = new MoistureSeparator();
+        const turbine = new SteamTurbine();
+        const generator = new Generator();
+        const condenser = new Condenser();
+
+        // Process flow in sequence
+        const wellheadResult = wellhead.process({
+            pressure: this.state.wellhead_pressure,
+            temperature: this.state.wellhead_temp,
+            flow: this.state.wellhead_flow
+        });
+
+        const separatorResult = separator.process({
+            separator_inlet_pressure: wellheadResult.pressure,
+            separator_inlet_temp: wellheadResult.temperature,
+            separator_inlet_flow: wellheadResult.flow
+        });
+
+        const moistureResult = moistureSeparator.process({
+            separator_inlet_pressure: separatorResult.separator_outlet_pressure,
+            separator_inlet_temp: separatorResult.separator_outlet_steam_temp,
+            separator_inlet_flow: separatorResult.separator_outlet_steam_flow
+        });
+
+        const turbineResult = turbine.process({
+            turbine_inlet_pressure: moistureResult.separator_outlet_pressure,
+            turbine_inlet_temp: moistureResult.separator_outlet_steam_temp,
+            turbine_inlet_steam_flow: moistureResult.separator_outlet_steam_flow,
+            turbine_outlet_pressure: this.state.condenser_pressure
+        });
+
+        const generatorResult = generator.process({
+            mechanical_power: turbineResult.mechanical_power
+        });
+
+        const condenserResult = condenser.process({
+            inlet_pressure: turbineResult.exhaust_pressure,
+            inlet_temperature: turbineResult.exhaust_temperature,
+            inlet_flow: turbineResult.steam_flow_out
+        });
+
+        // Update state with results
+        this.state = {
+            ...this.state,
+            ...wellheadResult,
+            ...separatorResult,
+            ...moistureResult,
+            ...turbineResult,
+            ...generatorResult,
+            ...condenserResult
+        };
+    }
+
     // Methods to update component parameters
     setWellheadPressure(pressure: number): void {
         this.wellhead.setPressure(pressure);

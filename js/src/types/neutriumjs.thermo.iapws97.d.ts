@@ -1,28 +1,15 @@
 declare module 'neutriumjs.thermo.iapws97' {
     export class IAPWS97 {
-        setPT(pressure: number, temperature: number): {
-            t: number;
-            p: number;
-            v: number;
-            h: number;
-            s: number;
-            x: number;
-        };
-        setPX(pressure: number, quality: number): {
-            t: number;
-            p: number;
-            v: number;
-            h: number;
-            s: number;
-            x: number;
-        };
-        setTX(temperature: number, quality: number): {
-            t: number;
-            p: number;
-            v: number;
-            h: number;
-            s: number;
-            x: number;
-        };
+        constructor();
+        
+        // Steam property calculations
+        h_pt(pressure: number, temperature: number): number;  // Specific enthalpy
+        s_pt(pressure: number, temperature: number): number;  // Specific entropy
+        v_pt(pressure: number, temperature: number): number;  // Specific volume
+        h_ps(pressure: number, entropy: number): number;      // Enthalpy from pressure and entropy
+        t_ps(pressure: number, entropy: number): number;      // Temperature from pressure and entropy
+        t_sat_p(pressure: number): number;                    // Saturation temperature
+        p_sat_t(temperature: number): number;                 // Saturation pressure
+        x_pt(pressure: number, temperature: number): number;  // Steam quality
     }
 }

@@ -68,7 +68,7 @@ export const App: React.FC = () => {
 
     const handleTurbineLoadChange = (load: number) => {
         // Convert percentage to actual power output
-        const maxPower = 50.0; // Maximum power output in MW
+        const maxPower = 45.0; // Maximum power output in MW
         engine.setState('turbine_out_power', (load / 100.0) * maxPower);
         setState(engine.getState());
     };

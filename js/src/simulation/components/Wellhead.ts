@@ -1,7 +1,7 @@
 import { BaseComponent } from './BaseComponent';
 import { WellheadOutput } from '../types';
 
-export class Wellhead extends BaseComponent {
+export class Wellhead extends BaseComponent<WellheadOutput> {
     constructor() {
         super('Wellhead');
         // Initialize with default values
@@ -10,13 +10,16 @@ export class Wellhead extends BaseComponent {
         this.setState('flow', 85);          // kg/s
     }
 
-    process(): WellheadOutput {
-        // In a real implementation, this would calculate values based on inputs
-        // For now, we'll return the current state
+    process(inputs?: Record<string, number>): WellheadOutput {
+        // If no inputs provided, use internal state
+        const pressure = inputs?.pressure ?? this.getState('pressure');
+        const temperature = inputs?.temperature ?? this.getState('temperature');
+        const flow = inputs?.flow ?? this.getState('flow');
+
         return {
-            pressure: this.getState('pressure'),
-            temperature: this.getState('temperature'),
-            flow: this.getState('flow')
+            pressure,
+            temperature,
+            flow
         };
     }
 
