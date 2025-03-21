@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
+    "@tailwindcss/postcss": "^4.0.15",
     "@types/three": "^0.174.0",
     "chart.js": "^4.4.8",
     "classnames": "^2.5.1",
